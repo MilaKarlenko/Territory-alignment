@@ -1,0 +1,25 @@
+Sales_Rep,CVM_clean,count,territory
+Alessia,Build,38,IT-CH
+Alessia,Defend,4,IT-CH
+Alessia,Gain,6,IT-CH
+Alessia,Maintain,45,IT-CH
+Eléonore,Build,103,VD-VS-FR
+Eléonore,Defend,17,VD-VS-FR
+Eléonore,Gain,20,VD-VS-FR
+Eléonore,Maintain,153,VD-VS-FR
+Florence,Build,138,GE-JU-NE
+Florence,Defend,17,GE-JU-NE
+Florence,Gain,37,GE-JU-NE
+Florence,Maintain,150,GE-JU-NE
+Luis,Build,3,ZG CITY-AG
+Luis,Defend,103,ZG CITY-AG
+Luis,Gain,27,ZG CITY-AG
+Luis,Maintain,113,ZG CITY-AG
+Michaela,Build,117,BS-BL-BE
+Michaela,Defend,41,BS-BL-BE
+Michaela,Gain,28,BS-BL-BE
+Michaela,Maintain,138,BS-BL-BE
+Sarina,Build,60,ZH-EAST-CH
+Sarina,Defend,26,ZH-EAST-CH
+Sarina,Gain,69,ZH-EAST-CH
+Sarina,Maintain,67,ZH-EAST-CH
