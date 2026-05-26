@@ -133,17 +133,17 @@ st.markdown("""
     <p style="font-size:17px;color:#3D553E;margin:0 0 6px 0;font-weight:600;">What you can do:</p>
     <div style="display:flex;gap:10px;flex-wrap:wrap;">
       <a href="#adjusting-territory-boundaries" style="text-decoration:none;">
-        <div style="background:#263F26;border-radius:10px;padding:14px 16px 10px 16px;min-width:160px;max-width:230px;flex:1;height:110px;position:relative;">
+        <div style="background:#263F26;border-radius:10px;padding:14px 16px 10px 16px;width:230px;height:110px;position:relative;">
           <div style="font-size:18px;font-weight:700;color:#F7EFE6;line-height:1.4;padding-bottom:28px;">Adjust territory boundaries.</div>
           <div style="font-size:12px;color:#c8d8c8;position:absolute;bottom:12px;left:16px;right:16px;">Move blocks between Reps. →</div>
         </div></a>
       <a href="#visit-frequency-scenario" style="text-decoration:none;">
-        <div style="background:#263F26;border-radius:10px;padding:14px 16px 10px 16px;min-width:160px;max-width:230px;flex:1;height:110px;position:relative;">
+        <div style="background:#263F26;border-radius:10px;padding:14px 16px 10px 16px;width:230px;height:110px;position:relative;">
           <div style="font-size:18px;font-weight:700;color:#F7EFE6;line-height:1.4;padding-bottom:28px;">Model visit frequency scenarios.</div>
           <div style="font-size:12px;color:#c8d8c8;position:absolute;bottom:12px;left:16px;right:16px;">Adjust CVM visit frequencies. →</div>
         </div></a>
       <a href="#coverage-optimisation" style="text-decoration:none;">
-        <div style="background:#263F26;border-radius:10px;padding:14px 16px 10px 16px;min-width:160px;max-width:230px;flex:1;height:110px;position:relative;">
+        <div style="background:#263F26;border-radius:10px;padding:14px 16px 10px 16px;width:230px;height:110px;position:relative;">
           <div style="font-size:18px;font-weight:700;color:#F7EFE6;line-height:1.4;padding-bottom:28px;">Optimise coverage.</div>
           <div style="font-size:12px;color:#c8d8c8;position:absolute;bottom:12px;left:16px;right:16px;">Add a Rep &amp; increase coverage. →</div>
         </div></a>
@@ -153,22 +153,22 @@ st.markdown("""
     <p style="font-size:17px;color:#3D553E;margin:0 0 6px 0;font-weight:600;">Analyse:</p>
     <div style="display:flex;gap:10px;flex-wrap:wrap;">
       <a href="#cvm-overview" style="text-decoration:none;">
-        <div style="background:#263F26;border-radius:10px;padding:14px 16px 10px 16px;min-width:160px;max-width:230px;flex:1;height:110px;position:relative;">
+        <div style="background:#263F26;border-radius:10px;padding:14px 16px 10px 16px;width:230px;height:110px;position:relative;">
           <div style="font-size:18px;font-weight:700;color:#F7EFE6;line-height:1.4;padding-bottom:28px;">CVM KPIs.</div>
           <div style="font-size:12px;color:#c8d8c8;position:absolute;bottom:12px;left:16px;right:16px;">Main metrics per CVM. →</div>
         </div></a>
       <a href="#block-details" style="text-decoration:none;">
-        <div style="background:#263F26;border-radius:10px;padding:14px 16px 10px 16px;min-width:160px;max-width:230px;flex:1;height:110px;position:relative;">
+        <div style="background:#263F26;border-radius:10px;padding:14px 16px 10px 16px;width:230px;height:110px;position:relative;">
           <div style="font-size:18px;font-weight:700;color:#F7EFE6;line-height:1.4;padding-bottom:28px;">IQVIA Blocks.</div>
           <div style="font-size:12px;color:#c8d8c8;position:absolute;bottom:12px;left:16px;right:16px;">Block-level detail view. →</div>
         </div></a>
       <a href="#distance-calculator" style="text-decoration:none;">
-        <div style="background:#263F26;border-radius:10px;padding:14px 16px 10px 16px;min-width:160px;max-width:230px;flex:1;height:110px;position:relative;">
+        <div style="background:#263F26;border-radius:10px;padding:14px 16px 10px 16px;width:230px;height:110px;position:relative;">
           <div style="font-size:18px;font-weight:700;color:#F7EFE6;line-height:1.4;padding-bottom:28px;">Distance between Blocks.</div>
           <div style="font-size:12px;color:#c8d8c8;position:absolute;bottom:12px;left:16px;right:16px;">Travel distance check. →</div>
         </div></a>
       <a href="#observe-pharmacies" style="text-decoration:none;">
-        <div style="background:#263F26;border-radius:10px;padding:14px 16px 10px 16px;min-width:160px;max-width:230px;flex:1;height:110px;position:relative;">
+        <div style="background:#263F26;border-radius:10px;padding:14px 16px 10px 16px;width:230px;height:110px;position:relative;">
           <div style="font-size:18px;font-weight:700;color:#F7EFE6;line-height:1.4;padding-bottom:28px;">Top Observe Pharmacies.</div>
           <div style="font-size:12px;color:#c8d8c8;position:absolute;bottom:12px;left:16px;right:16px;">Coverage expansion targets. →</div>
         </div></a>
