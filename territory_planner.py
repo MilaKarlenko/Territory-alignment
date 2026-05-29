@@ -43,6 +43,8 @@ st.markdown(f"""
     header[data-testid="stHeader"] {{ background: #F7EFE6 !important; height: 0px !important; min-height: 0px !important; visibility: hidden; }}
     #MainMenu {{ visibility: hidden; }}
     footer {{ visibility: hidden; }}
+    [data-testid="stButton"] button[id*="_btn_sec"] {{ background-color: transparent !important; color: #042B0B !important; border: none !important; padding: 0 !important; font-size: 1.5rem !important; font-weight: 800 !important; letter-spacing: 0; border-radius: 0 !important; text-align: left !important; }}
+    [data-testid="stButton"] button[id*="_btn_sec"]:hover {{ color: #546955 !important; background: transparent !important; }}
     .stButton > button {{ background-color: transparent; color: #042B0B !important; border: 1.5px solid #042B0B; border-radius: 50px; font-weight: 700; padding: 8px 24px; font-size: 14px; letter-spacing: 0.3px; font-family: 'OpellaSans', 'Gilroy', 'Inter', sans-serif !important; }}
     .stButton > button[kind="primary"], button.primary {{ background-color: #042B0B !important; color: #FFFFFF !important; border: none !important; }}
     .stDownloadButton > button {{ background-color: transparent !important; color: #042B0B !important; border: 1.5px solid #042B0B !important; border-radius: 50px !important; font-weight: 700 !important; padding: 8px 24px !important; font-size: 14px !important; font-family: 'OpellaSans', 'Gilroy', 'Inter', sans-serif !important; -webkit-text-fill-color: #042B0B !important; }}
@@ -87,7 +89,7 @@ st.markdown(f"""
     [data-testid="stCheckbox"]:hover, [data-testid="stCheckbox"] > label:hover {{ background: transparent !important; }}
     [data-baseweb="checkbox"]:hover {{ background: transparent !important; }}
     [data-baseweb="checkbox"] span:hover {{ background: transparent !important; }}
-    [data-testid="stCheckbox"] input[type="checkbox"] {{ accent-color: #3D553E !important; }}
+    .stNumberInput input {{ text-align: left !important; }}
     [data-baseweb="checkbox"] [data-checked="true"] {{ background-color: #3D553E !important; border-color: #3D553E !important; }}
     [data-baseweb="checkbox"] > div {{ border-color: #3D553E !important; }}
     [data-baseweb="checkbox"] > div:hover {{ border-color: #3D553E !important; background-color: transparent !important; }}
@@ -162,21 +164,20 @@ st.markdown("""
           <div style="font-size:18px;font-weight:700;color:#F7EFE6;line-height:1.4;padding-bottom:28px;">IQVIA Blocks.</div>
           <div style="font-size:12px;color:#c8d8c8;position:absolute;bottom:12px;left:16px;right:16px;">Block-level detail view. →</div>
         </div></a>
-      <a href="#distance-calculator" style="text-decoration:none;">
-        <div style="background:#263F26;border-radius:10px;padding:14px 16px 10px 16px;width:230px;height:110px;position:relative;">
-          <div style="font-size:18px;font-weight:700;color:#F7EFE6;line-height:1.4;padding-bottom:28px;">Distance between Blocks.</div>
-          <div style="font-size:12px;color:#c8d8c8;position:absolute;bottom:12px;left:16px;right:16px;">Travel distance check. →</div>
-        </div></a>
       <a href="#observe-pharmacies" style="text-decoration:none;">
         <div style="background:#263F26;border-radius:10px;padding:14px 16px 10px 16px;width:230px;height:110px;position:relative;">
           <div style="font-size:18px;font-weight:700;color:#F7EFE6;line-height:1.4;padding-bottom:28px;">Top Observe Pharmacies.</div>
           <div style="font-size:12px;color:#c8d8c8;position:absolute;bottom:12px;left:16px;right:16px;">Coverage expansion targets. →</div>
         </div></a>
+      <a href="#distance-calculator" style="text-decoration:none;">
+        <div style="background:#263F26;border-radius:10px;padding:14px 16px 10px 16px;width:230px;height:110px;position:relative;">
+          <div style="font-size:18px;font-weight:700;color:#F7EFE6;line-height:1.4;padding-bottom:28px;">Distance between Blocks.</div>
+          <div style="font-size:12px;color:#c8d8c8;position:absolute;bottom:12px;left:16px;right:16px;">Travel distance check. →</div>
+        </div></a>
     </div>
   </div>
 </div>
 """, unsafe_allow_html=True)
-
 # Apply any pending scenario load BEFORE widgets are instantiated
 # Apply pending scenario load BEFORE any widgets render
 
@@ -242,6 +243,19 @@ LANGUAGE_TERRITORIES = {
 REP_LANGUAGE = {rep: TERRITORY_LANGUAGE.get(terr, "Unknown") for rep, terr in REP_TO_TERRITORY.items()}
 
 def get_color(t): return TERRITORY_COLORS.get(t, "#999999")
+
+def section_toggle(key, label, description=""):
+    """Renders section header with toggle. Returns True if section is open."""
+    is_open = st.session_state.get(key, False)
+    arrow = "▼" if is_open else "▶"
+    btn_label = f"{arrow}  {label}"
+    if st.button(btn_label, key=f"_btn_{key}", use_container_width=False):
+        st.session_state[key] = not is_open
+        st.rerun()
+    if description:
+        st.markdown(f'<div style="background:#263F26;border-radius:10px;padding:10px 16px;margin:4px 0 8px 0;width:fit-content;max-width:100%;font-size:13px;color:#F7EFE6;line-height:1.6;">{description}</div>', unsafe_allow_html=True)
+    return st.session_state.get(key, False)
+
 def haversine_km(lat1, lng1, lat2, lng2):
     R = 6371; dlat = radians(lat2-lat1); dlng = radians(lng2-lng1)
     a = sin(dlat/2)**2 + cos(radians(lat1))*cos(radians(lat2))*sin(dlng/2)**2
@@ -297,7 +311,9 @@ if "loaded_scenario_results" not in st.session_state:
 for key, val in [("assignments", dict(zip(block_df_original["Block_APO"], block_df_original["territory"]))),
     ("custom_territories", {}), ("tp_explicit", {c: False for c in CVM_CATEGORIES}),
     ("prev_cvm_freq", {c: 4 for c in CVM_CATEGORIES}), ("tp_freq_values", {c: 4 for c in CVM_CATEGORIES}),
-    ("selected_blocks_list", []), ("saved_scenarios", {}), ("undo_stack", []), ("freq_applied", False)]:
+    ("selected_blocks_list", []), ("saved_scenarios", {}), ("undo_stack", []), ("freq_applied", False),
+    ("sec_territory", False), ("sec_cvm", False), ("sec_visit_freq", False), ("sec_distance", False),
+    ("sec_block_details", False), ("sec_observe", False), ("sec_coverage", False)]:
     if key not in st.session_state: st.session_state[key] = val
 
 TERRITORY_COLORS.update(st.session_state.custom_territories)
@@ -384,7 +400,7 @@ with col_map:
         bid = f["properties"]["Block_APO"]; f["properties"]["Territory"] = assignments.get(bid,"Unknown")
     def sf(feature):
         t = feature["properties"].get("Territory","Unknown"); bid = feature["properties"]["Block_APO"]; sel = bid in selected_blocks
-        return {"fillColor":get_color(t),"color":"#ff0000" if sel else "#333333","weight":3 if sel else 0.8,"fillOpacity":0.7 if not sel else 0.9}
+        return {"fillColor":get_color(t),"color":"#FF78D2" if sel else "#333333","weight":4 if sel else 0.8,"fillOpacity":0.7 if not sel else 0.85}
     folium.GeoJson(gc,style_function=sf,tooltip=folium.GeoJsonTooltip(fields=["Block_APO","Territory"],aliases=["Block:","Territory:"],style="font-size:15px;font-weight:bold;")).add_to(m)
     from shapely.geometry import shape
     for f in gc["features"]:
@@ -404,92 +420,100 @@ with col_map:
 
     # Controls below map
     st.markdown('<div id="adjusting-territory-boundaries"></div>', unsafe_allow_html=True)
-    st.markdown('<h3 style="color:#042B0B;-webkit-text-fill-color:#042B0B;font-weight:bold;">Adjusting Territory Boundaries.</h3>', unsafe_allow_html=True)
-    ctrl1, ctrl2, ctrl3 = st.columns(3)
-    with ctrl1:
-        st.markdown('<p style="color:#042B0B;font-weight:800;font-size:17px;">Add New Territory.</p>', unsafe_allow_html=True)
-        nn = st.text_input("Name",key="new_terr_input",label_visibility="collapsed",placeholder="Territory name")
-        nc = st.color_picker("Color.","#FF78D2")
-        if st.button("Add Territory.") and nn and nn not in all_territories:
-            st.session_state.custom_territories[nn] = nc; st.rerun()
-    with ctrl2:
-        st.markdown('<p style="color:#042B0B;font-weight:800;font-size:17px;">Move Blocks.</p>', unsafe_allow_html=True)
-        src = st.selectbox("From territory:",options=["All"]+all_territories)
-        avail = sorted(assignments.keys(), key=str) if src=="All" else sorted([b for b,t in assignments.items() if t==src], key=str)
-        ns = st.multiselect("Select blocks:",options=avail,default=st.session_state.selected_blocks_list,format_func=lambda x:f"{x} ({assignments[x]})")
-        st.session_state.selected_blocks_list = ns
-        tgt = st.selectbox("Move to:",options=[None]+all_territories,placeholder="Choose option",format_func=lambda x: "Choose option" if x is None else x)
-        if ns:
-            # Preview with pharmacy count
-            pv = {}
-            for t in all_territories:
-                s = summary[summary["territory"]==t]
-                pv[t] = {"Visits":int(s["Visits"].values[0]) if len(s)>0 else 0, "Pharmacies":int(s["Pharmacies"].values[0]) if len(s)>0 else 0}
-            for b in ns:
-                for _, row in block_rep_kpis[block_rep_kpis["Block_APO"]==b].iterrows():
-                    rt = REP_TO_TERRITORY.get(row["Sales_Rep"],"")
-                    if rt in pv: pv[rt]["Visits"]-=int(row["total_visits"]); pv[rt]["Pharmacies"]-=int(row["pharmacies"])
-                    if tgt in pv: pv[tgt]["Visits"]+=int(row["total_visits"]); pv[tgt]["Pharmacies"]+=int(row["pharmacies"])
-            pvh = '<div style="font-size:13px;background:#F0E5D8;padding:8px;border-radius:4px;margin-top:8px;"><strong>Preview after move:</strong><br>'
-            for t in sorted_territories:
-                if t in pv:
-                    sb = summary[summary["territory"]==t]
-                    vb = int(sb["Visits"].values[0]) if len(sb)>0 else 0; va = pv[t]["Visits"]; dv = va-vb
-                    pb = int(sb["Pharmacies"].values[0]) if len(sb)>0 else 0; pa = pv[t]["Pharmacies"]; dp = pa-pb
-                    if dv!=0 or dp!=0:
-                        vc = "#27ae60" if dv>0 else "#e74c3c"; pc = "#27ae60" if dp>0 else "#e74c3c"
-                        pvh += f'{t}: {vb}→{va} visits (<span style="color:{vc}">{dv:+d}</span>) · {pb}→{pa} ph. (<span style="color:{pc}">{dp:+d}</span>)<br>'
-            pvh += '</div>'; st.markdown(pvh, unsafe_allow_html=True)
-            # Language warning
-            tgt_lang = TERRITORY_LANGUAGE.get(tgt, "Unknown")
-            lang_warnings = []
-            for b in ns:
-                orig_terr = original_assignments.get(b, "")
-                block_lang = TERRITORY_LANGUAGE.get(orig_terr, "Unknown")
-                if block_lang != tgt_lang and tgt_lang != "Unknown" and block_lang != "Unknown":
-                    lang_warnings.append(f"Block {b} ({block_lang}) → {tgt} ({tgt_lang})")
-            if lang_warnings:
-                whtml = '<div style="font-size:13px;background:#fff3cd;padding:8px;border-radius:4px;margin-top:4px;border-left:4px solid #ffc107;">⚠️ <strong>Language group mismatch:</strong><br>'
-                for w in lang_warnings[:5]: whtml += f'{w}<br>'
-                if len(lang_warnings) > 5: whtml += f'... and {len(lang_warnings)-5} more'
-                whtml += '</div>'; st.markdown(whtml, unsafe_allow_html=True)
-        if st.button("Apply Reassignment.",type="primary") and ns and tgt:
-            st.session_state.undo_stack.append(dict(st.session_state.assignments))
-            for b in ns: st.session_state.assignments[b] = tgt
-            st.session_state.selected_blocks_list = []; st.rerun()
-    with ctrl3:
-        st.markdown('<p style="color:#042B0B;font-weight:800;font-size:17px;">Actions.</p>', unsafe_allow_html=True)
-        _a1, _a2 = st.columns(2)
-        with _a1:
-            if st.button("Undo.", use_container_width=True):
-                if st.session_state.undo_stack: st.session_state.assignments=st.session_state.undo_stack.pop(); st.session_state.selected_blocks_list=[]; st.rerun()
-                else: st.info("Nothing to undo")
-        with _a2:
-            edf = pd.DataFrame([{"Block_APO":b,"Territory":t} for b,t in assignments.items()])
-            edf["Block_APO"] = edf["Block_APO"].apply(lambda x: int(x) if str(x).isdigit() else x)
-            edf = edf.sort_values("Block_APO")
-            st.download_button("Territories (CSV).",edf.to_csv(index=False),"territory_assignments.csv","text/csv",use_container_width=True)
-        _a3, _a4 = st.columns(2)
-        with _a3:
-            if st.button("Reset All.", use_container_width=True):
-                st.session_state.assignments=dict(zip(block_df_original["Block_APO"],block_df_original["territory"])); st.session_state.selected_blocks_list=[]; st.session_state.undo_stack=[]; st.session_state.custom_territories={}; st.session_state["wi_run"]=False; st.session_state["wi_scenarios"]=[]; st.session_state["wi_loaded_scenario"]=None; st.session_state.activated_observe_eans=set(); st.session_state.activated_obs_freq=4; st.session_state.loaded_scenario_results=None; st.session_state["freq_applied"]=False
-                st.session_state["_pending_reset_freq"] = True
-                for _c in ["Build","Defend","Gain","Maintain","Observe"]:
-                    for _pfx in ["wi_freq_","wi_tp_on_","wi_sales_on_"]:
-                        st.session_state.pop(f"{_pfx}{_c}", None)
-                st.session_state.pop("wi_mlat", None); st.session_state.pop("wi_mlng", None)
-                st.session_state.pop("wi_vpd", None); st.session_state.pop("wi_target", None)
+    _sec_terr_open = st.session_state.get("sec_territory", False)
+    _terr_arrow = "▼" if _sec_terr_open else "▶"
+    _dc_terr = "#263F26" if _sec_terr_open else "#6D7F6E"
+    st.markdown(f'<div style="background:{_dc_terr};border-radius:10px;padding:10px 16px;margin:4px 0 4px 0;width:fit-content;max-width:100%;font-size:13px;color:#F7EFE6;line-height:1.6;">Move blocks between Sales Reps and customise territory boundaries.</div>', unsafe_allow_html=True)
+    if st.button(f"{_terr_arrow}  Adjusting Territory Boundaries.", key="_btn_sec_territory"):
+        st.session_state["sec_territory"] = not _sec_terr_open; st.rerun()
+    if _sec_terr_open:
+        ctrl1, ctrl2, ctrl3 = st.columns(3)
+        with ctrl1:
+            st.markdown('<p style="color:#042B0B;font-weight:800;font-size:17px;">Add New Territory.</p>', unsafe_allow_html=True)
+            nn = st.text_input("Name",key="new_terr_input",label_visibility="collapsed",placeholder="Territory name")
+            nc = st.color_picker("Color.","#FF78D2")
+            if st.button("Add Territory.") and nn and nn not in all_territories:
+                st.session_state.custom_territories[nn] = nc; st.rerun()
+        with ctrl2:
+            st.markdown('<p style="color:#042B0B;font-weight:800;font-size:17px;">Move Blocks.</p>', unsafe_allow_html=True)
+            src = st.selectbox("From territory:",options=["All"]+all_territories)
+            avail = sorted(assignments.keys(), key=str) if src=="All" else sorted([b for b,t in assignments.items() if t==src], key=str)
+            ns = st.multiselect("Select blocks:",options=avail,default=[b for b in st.session_state.selected_blocks_list if b in avail],format_func=lambda x:f"{x} ({assignments[x]})")
+            if ns != st.session_state.selected_blocks_list:
+                st.session_state.selected_blocks_list = ns
                 st.rerun()
-        with _a4:
-            def build_excel():
-                o = BytesIO()
-                with pd.ExcelWriter(o,engine="openpyxl") as w:
-                    summary.to_excel(w,sheet_name="Territory KPIs",index=False); edf.to_excel(w,sheet_name="Block Assignments",index=False)
-                    pc = pharmacy_detail.copy(); pc["current_territory"]=pc["Block_APO"].map(dict(zip(block_df["Block_APO"],block_df["territory"])))
-                    pc.to_excel(w,sheet_name="Pharmacy Detail",index=False)
-                    pc[pc["CVM_clean"]=="Observe"].sort_values("FY2025",ascending=False).to_excel(w,sheet_name="Observe",index=False)
-                return o.getvalue()
-            st.download_button("Full Report (Excel).",build_excel(),"territory_report.xlsx","application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",use_container_width=True)
+            tgt = st.selectbox("Move to:",options=[None]+all_territories,placeholder="Choose option",format_func=lambda x: "Choose option" if x is None else x)
+            if ns and tgt:
+                # Preview with pharmacy count
+                pv = {}
+                for t in all_territories:
+                    s = summary[summary["territory"]==t]
+                    pv[t] = {"Visits":int(s["Visits"].values[0]) if len(s)>0 else 0, "Pharmacies":int(s["Pharmacies"].values[0]) if len(s)>0 else 0}
+                for b in ns:
+                    for _, row in block_rep_kpis[block_rep_kpis["Block_APO"]==b].iterrows():
+                        rt = REP_TO_TERRITORY.get(row["Sales_Rep"],"")
+                        if rt in pv: pv[rt]["Visits"]-=int(row["total_visits"]); pv[rt]["Pharmacies"]-=int(row["pharmacies"])
+                        if tgt in pv: pv[tgt]["Visits"]+=int(row["total_visits"]); pv[tgt]["Pharmacies"]+=int(row["pharmacies"])
+                pvh = '<div style="font-size:13px;background:#F0E5D8;padding:8px;border-radius:4px;margin-top:8px;"><strong>Preview after move:</strong><br>'
+                for t in sorted_territories:
+                    if t in pv:
+                        sb = summary[summary["territory"]==t]
+                        vb = int(sb["Visits"].values[0]) if len(sb)>0 else 0; va = pv[t]["Visits"]; dv = va-vb
+                        pb = int(sb["Pharmacies"].values[0]) if len(sb)>0 else 0; pa = pv[t]["Pharmacies"]; dp = pa-pb
+                        if dv!=0 or dp!=0:
+                            vc = "#27ae60" if dv>0 else "#e74c3c"; pc = "#27ae60" if dp>0 else "#e74c3c"
+                            pvh += f'{t}: {vb}→{va} visits (<span style="color:{vc}">{dv:+d}</span>) · {pb}→{pa} ph. (<span style="color:{pc}">{dp:+d}</span>)<br>'
+                pvh += '</div>'; st.markdown(pvh, unsafe_allow_html=True)
+                # Language warning
+                tgt_lang = TERRITORY_LANGUAGE.get(tgt, "Unknown")
+                lang_warnings = []
+                for b in ns:
+                    orig_terr = original_assignments.get(b, "")
+                    block_lang = TERRITORY_LANGUAGE.get(orig_terr, "Unknown")
+                    if block_lang != tgt_lang and tgt_lang != "Unknown" and block_lang != "Unknown":
+                        lang_warnings.append(f"Block {b} ({block_lang}) → {tgt} ({tgt_lang})")
+                if lang_warnings:
+                    whtml = '<div style="font-size:13px;background:#fff3cd;padding:8px;border-radius:4px;margin-top:4px;border-left:4px solid #ffc107;">⚠️ <strong>Language group mismatch:</strong><br>'
+                    for w in lang_warnings[:5]: whtml += f'{w}<br>'
+                    if len(lang_warnings) > 5: whtml += f'... and {len(lang_warnings)-5} more'
+                    whtml += '</div>'; st.markdown(whtml, unsafe_allow_html=True)
+            if st.button("Apply Reassignment.",type="primary") and ns and tgt:
+                st.session_state.undo_stack.append(dict(st.session_state.assignments))
+                for b in ns: st.session_state.assignments[b] = tgt
+                st.session_state.selected_blocks_list = []; st.rerun()
+        with ctrl3:
+            st.markdown('<p style="color:#042B0B;font-weight:800;font-size:17px;">Actions.</p>', unsafe_allow_html=True)
+            _a1, _a2 = st.columns(2)
+            with _a1:
+                if st.button("Undo.", use_container_width=True):
+                    if st.session_state.undo_stack: st.session_state.assignments=st.session_state.undo_stack.pop(); st.session_state.selected_blocks_list=[]; st.rerun()
+                    else: st.info("Nothing to undo")
+            with _a2:
+                edf = pd.DataFrame([{"Block_APO":b,"Territory":t} for b,t in assignments.items()])
+                edf["Block_APO"] = edf["Block_APO"].apply(lambda x: int(x) if str(x).isdigit() else x)
+                edf = edf.sort_values("Block_APO")
+                st.download_button("Territories (CSV).",edf.to_csv(index=False),"territory_assignments.csv","text/csv",use_container_width=True)
+            _a3, _a4 = st.columns(2)
+            with _a3:
+                if st.button("Reset All.", use_container_width=True):
+                    st.session_state.assignments=dict(zip(block_df_original["Block_APO"],block_df_original["territory"])); st.session_state.selected_blocks_list=[]; st.session_state.undo_stack=[]; st.session_state.custom_territories={}; st.session_state["wi_run"]=False; st.session_state["wi_scenarios"]=[]; st.session_state["wi_loaded_scenario"]=None; st.session_state.activated_observe_eans=set(); st.session_state.activated_obs_freq=4; st.session_state.loaded_scenario_results=None; st.session_state["freq_applied"]=False
+                    st.session_state["_pending_reset_freq"] = True
+                    for _c in ["Build","Defend","Gain","Maintain","Observe"]:
+                        for _pfx in ["wi_freq_","wi_tp_on_","wi_sales_on_"]:
+                            st.session_state.pop(f"{_pfx}{_c}", None)
+                    st.session_state.pop("wi_mlat", None); st.session_state.pop("wi_mlng", None)
+                    st.session_state.pop("wi_vpd", None); st.session_state.pop("wi_target", None)
+                    st.rerun()
+            with _a4:
+                def build_excel():
+                    o = BytesIO()
+                    with pd.ExcelWriter(o,engine="openpyxl") as w:
+                        summary.to_excel(w,sheet_name="Territory KPIs",index=False); edf.to_excel(w,sheet_name="Block Assignments",index=False)
+                        pc = pharmacy_detail.copy(); pc["current_territory"]=pc["Block_APO"].map(dict(zip(block_df["Block_APO"],block_df["territory"])))
+                        pc.to_excel(w,sheet_name="Pharmacy Detail",index=False)
+                        pc[pc["CVM_clean"]=="Observe"].sort_values("FY2025",ascending=False).to_excel(w,sheet_name="Observe",index=False)
+                    return o.getvalue()
+                st.download_button("Full Report (Excel).",build_excel(),"territory_report.xlsx","application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",use_container_width=True)
 
 with col_kpi:
 
@@ -514,7 +538,7 @@ with col_kpi:
     for _,row in summary_sorted.iterrows():
         c=get_color(row["territory"]); r=TERRITORY_TO_REP.get(row["territory"],row["territory"])
         rc=REP_CAPACITY.get(r,{"visits_day":7,"capacity":1435}); cp=round(row["Visits"]/rc["capacity"]*100,1) if rc["capacity"]>0 else 0
-        with st.expander(f'{row["territory"]} — {r} | {row["Pharmacies"]} ph. | {row["Sales"]:,.0f}',expanded=False):
+        with st.expander(f'{row["territory"]} — {r} | {row["Pharmacies"]} ph.',expanded=False):
             st.markdown(f'<div style="border-left:6px solid {c};padding-left:12px;"><span style="color:#6D7F6E;">•</span> Blocks: {row["Blocks"]} · PLZ: {row["PLZ"]}<br><span style="color:#6D7F6E;">•</span> Pharmacies: {row["Pharmacies"]} · Visited: {row["Visited"]} · Coverage: {row["Coverage"]}%<br><span style="color:#6D7F6E;">•</span> Top Priority Pharmacies: {int(row["Top_Pharma"])}<br><span style="color:#6D7F6E;">•</span> Visits: {int(row["Visits"])} · V/Day: {row["Visits_Day"]} (vs. {rc["visits_day"]})<br><span style="color:#6D7F6E;">•</span> Visit Capacity: {cp}% (of {rc["capacity"]})<br><span style="color:#6D7F6E;">•</span> Net Sales 2025: {row["Sales"]:,.0f} · Avg: {row["Avg_Sales"]:,}</div>', unsafe_allow_html=True)
     st.divider()
     st.markdown(f'**Total: {len(all_territories)} territories · {len(assignments)} blocks**<br>**{summary["Pharmacies"].sum()} ph. · {int(summary["Visits"].sum())} visits · {summary["Sales"].sum():,.0f}**', unsafe_allow_html=True)
@@ -531,1219 +555,1338 @@ visited_cvms = ["Build","Defend","Gain","Maintain"]
 
 # TOTAL PER CVM
 st.divider()
-st.markdown('<div id="cvm-overview"></div>', unsafe_allow_html=True)
-st.markdown('<h3 style="color:#042B0B;-webkit-text-fill-color:#042B0B;font-weight:bold;">CVM KPIs.</h3>', unsafe_allow_html=True)
-st.markdown('<div style="background:#263F26;border-radius:10px;padding:12px 16px;margin:6px 0 12px 0;width:fit-content;max-width:100%;font-size:14px;color:#F7EFE6;line-height:1.7;">Summary of pharmacies, visits, and sales by CVM category (Build, Defend, Gain, Maintain, Observe) across all territories.</div>', unsafe_allow_html=True)
-cfr = st.multiselect("Filter by Sales Rep:",options=["All"]+sorted(pharmacy_detail["Sales_Rep"].unique().tolist()),default=["All"],key="cvm_rep_filter")
-pf = pharma_current if "All" in cfr or not cfr else pharma_current[pharma_current["Sales_Rep"].isin(cfr)]
-CVM_COLS = CVM_CATEGORIES+["Observe","Total"]
-tpa=len(pf); tva=int(pf["Planned_Visits"].sum()); tsa=pf["FY2025"].sum()
-ctd={}
-for cvm in CVM_COLS:
-    ss = pf if cvm=="Total" else pf[pf["CVM_clean"]==cvm]
-    np2=len(ss); nt=int(ss["Top_Priority"].sum()); tv=int(ss["Planned_Visits"].sum())
-    vpd=round(tv/WORKING_DAYS,1); ts=ss["FY2025"].sum(); avs=round(ts/np2,0) if np2>0 else 0
-    sp=round(np2/tpa*100,1) if tpa>0 else 0; sv=round(tv/tva*100,1) if tva>0 else 0; ss2=round(ts/tsa*100,1) if tsa>0 else 0
-    nv=ss[ss["CVM_clean"].isin(visited_cvms)].shape[0]; cov=round(nv/np2*100,1) if np2>0 else 0
-    ctd[cvm]={"Number of Pharmacies":np2,"Share of Pharmacies %":sp,"Top Priority Pharmacies*":nt,"Visits":tv,"Visits/Day":vpd,"Share of Visits %":sv,"Net Sales 2025":f"{ts:,.0f}","Avg Sales/Pharmacy":f"{avs:,.0f}","Share in Total Sales %":ss2}
-ch2=f'<table style="width:100%;border-collapse:collapse;font-size:15px;"><tr style="background:{HDR_BG};color:#F7EFE6;"><th style="padding:8px;text-align:left;">Metric</th>'
-for cvm in CVM_COLS: ch2+=f'<th style="padding:8px;text-align:center;">{cvm}</th>'
-ch2+='</tr>'
-for mt in ctd["Build"].keys():
-    ch2+=f'<tr style="border-bottom:1px solid #eee;"><td style="padding:4px;font-weight:bold;">{mt}</td>'
-    for cvm in CVM_COLS:
-        s="font-weight:bold;" if cvm=="Total" else ""; ch2+=f'<td style="padding:4px;text-align:center;{s}">{ctd[cvm][mt]}</td>'
-    ch2+='</tr>'
-ch2+='</table>'; st.markdown(ch2, unsafe_allow_html=True)
-st.markdown('<p style="font-size:13px;color:#6D7F6E;margin-top:4px;font-style:italic;">*Pharmacies that generated 50% of Net Sales in 2025.</p>', unsafe_allow_html=True)
 
-# VISIT FREQUENCY SCENARIO
-st.divider()
-st.markdown('<div id="visit-frequency-scenario"></div>', unsafe_allow_html=True)
-st.markdown('<h3 style="color:#042B0B;-webkit-text-fill-color:#042B0B;font-weight:bold;">Visit Frequency Scenario.</h3>', unsafe_allow_html=True)
-st.markdown('''<div style="background:#263F26;border-radius:10px;padding:12px 16px;margin:6px 0 12px 0;width:fit-content;max-width:100%;font-size:14px;color:#F7EFE6;line-height:1.7;">Model how changing visit frequencies per CVM affects Total Visits and Reps capacity.</div>''', unsafe_allow_html=True)
-fc1,fc2 = st.columns([1,3])
-with fc1:
-    st.markdown("**Adjust visit frequency (visits/year):**")
+_sec_visit_freq = st.session_state.get("sec_visit_freq", False)
+_arr_visit_freq = "▼" if _sec_visit_freq else "▶"
+_desc_color__sec_visit_freq = "#263F26" if _sec_visit_freq else "#6D7F6E"
+st.markdown(f'<div style="background:{_desc_color__sec_visit_freq};border-radius:10px;padding:10px 16px;margin:4px 0 4px 0;width:fit-content;max-width:100%;font-size:13px;color:#F7EFE6;line-height:1.6;">Model how changing visit frequencies per CVM affects Total Visits and Reps capacity.</div>', unsafe_allow_html=True)
+if st.button(f"{_arr_visit_freq}  Visit Frequency Scenario.", key="_btn_sec_visit_freq"):
+    st.session_state["sec_visit_freq"] = not _sec_visit_freq; st.rerun()
+if _sec_visit_freq:
+    fc1,fc2 = st.columns([1,3])
+    with fc1:
+        st.markdown("**Adjust visit frequency (visits/year):**")
     
-    # Global sales threshold
-    sales_threshold = st.number_input("Sales threshold (≥):", min_value=0, max_value=500000, value=10000, step=1000, key="sales_thresh")
-    
-    CVM_WITH_OBS = CVM_CATEGORIES + ["Observe"]
-    freq = {}; tp_freq = {}; tp_active = {}; sales_freq = {}; sales_active = {}
-    
-    # Header
-    st.markdown(
-        '<div style="display:grid;grid-template-columns:2.0fr 1.8fr 0.3fr 1.8fr 0.3fr 1.8fr;gap:4px;font-size:14px;font-weight:bold;padding:4px 0;">'
-        '<span style="font-weight:700;">CVM</span><span style="font-weight:700;">Freq.</span><span></span><span style="font-weight:700;">TP Freq.</span><span></span><span style="font-weight:700;">Sales Freq.</span>'
-        '</div>', unsafe_allow_html=True)
-    
-    for cvm in CVM_WITH_OBS:
-        default_freq = 4 if cvm != "Observe" else 0
-        cols = st.columns([2.0, 1.8, 0.3, 1.8, 0.3, 1.8])
-        with cols[0]: st.markdown(f"**{cvm}**")
-        with cols[1]: freq[cvm] = st.number_input(f"F_{cvm}", min_value=0, max_value=52, value=default_freq, step=1, key=f"freq_{cvm}", label_visibility="collapsed")
-        with cols[2]: tp_active[cvm] = st.checkbox("", key=f"tp_on_{cvm}", label_visibility="collapsed")
-        with cols[3]:
-            if tp_active[cvm]:
-                tp_freq[cvm] = st.number_input(f"TP_{cvm}", min_value=0, max_value=52, value=freq[cvm], step=1, key=f"tp_freq_{cvm}", label_visibility="collapsed")
-            else:
-                tp_freq[cvm] = freq[cvm]
-        with cols[4]: sales_active[cvm] = st.checkbox("", key=f"sales_on_{cvm}", label_visibility="collapsed")
-        with cols[5]:
-            if sales_active[cvm]:
-                sales_freq[cvm] = st.number_input(f"S_{cvm}", min_value=0, max_value=52, value=freq[cvm], step=1, key=f"sales_freq_{cvm}", label_visibility="collapsed")
-            else:
-                sales_freq[cvm] = freq[cvm]
-    
-    st.markdown('<p style="font-size:13px;color:#6D7F6E;font-style:italic;margin:8px 0 10px 0;">To change visit frequency for TP or Sales-based, click the checkboxes next to them.<br><b>TP Freq.:</b> visit frequency of Top Priority Pharmacies — Pharmacies that generated 50% of Net Sales in 2025.<br><b>Sales-based Freq.:</b> visit frequency for pharmacies where Net Sales 2025 exceeds the threshold above.</p>', unsafe_allow_html=True)
-    _btn1, _btn2 = st.columns(2)
-    with _btn1:
-        if st.button("Apply Frequencies.", type="primary", use_container_width=True):
-            st.session_state["freq_applied"] = True
-            st.rerun()
-    with _btn2:
-        if st.button("Reset Frequencies.", use_container_width=True):
-            st.session_state["_pending_reset_freq"] = True
-            st.rerun()
+        # Global sales threshold (shown only when advanced options active — handled below)
+        CVM_WITH_OBS = CVM_CATEGORIES + ["Observe"]
+        freq = {}; tp_freq = {}; tp_active = {}; sales_freq = {}; sales_active = {}
 
-def calc_td(bdf, col, bldf):
-    r={}
-    for _,row in bdf.iterrows():
-        t=row.get("territory",""); k=row.get("CVM_clean","__t")
-        if t not in r: r[t]={}
-        r[t][k]=float(row[col])
+        show_adv_freq = st.toggle("Activate other Visit Frequency Options", value=False, key="show_adv_freq")
+
+        if show_adv_freq:
+            sales_threshold = st.number_input("Sales threshold (≥):", min_value=0, max_value=500000, value=10000, step=1000, key="sales_thresh")
+        else:
+            sales_threshold = st.session_state.get("sales_thresh", 10000)
+
+        # Header
+        if show_adv_freq:
+            st.markdown(
+                '<div style="display:grid;grid-template-columns:2.0fr 1.8fr 0.3fr 1.8fr 0.3fr 1.8fr;gap:4px;font-size:14px;font-weight:bold;padding:4px 0;">'
+                '<span style="font-weight:700;">CVM</span><span style="font-weight:700;">Freq.</span><span></span><span style="font-weight:700;">TP Freq.</span><span></span><span style="font-weight:700;">Sales Freq.</span>'
+                '</div>', unsafe_allow_html=True)
+        else:
+            st.markdown(
+                '<div style="display:grid;grid-template-columns:2.0fr 1.8fr;gap:4px;font-size:14px;font-weight:bold;padding:4px 0;">'
+                '<span style="font-weight:700;">CVM</span><span style="font-weight:700;">Freq.</span>'
+                '</div>', unsafe_allow_html=True)
+
+        for cvm in CVM_WITH_OBS:
+            default_freq = 4 if cvm != "Observe" else 0
+            if show_adv_freq:
+                cols = st.columns([2.0, 1.8, 0.3, 1.8, 0.3, 1.8])
+                with cols[0]: st.markdown(f"**{cvm}**")
+                with cols[1]: freq[cvm] = st.number_input(f"F_{cvm}", min_value=0, max_value=52, value=default_freq, step=1, key=f"freq_{cvm}", label_visibility="collapsed")
+                with cols[2]: tp_active[cvm] = st.checkbox("", key=f"tp_on_{cvm}", label_visibility="collapsed")
+                with cols[3]:
+                    if tp_active[cvm]:
+                        tp_freq[cvm] = st.number_input(f"TP_{cvm}", min_value=0, max_value=52, value=freq[cvm], step=1, key=f"tp_freq_{cvm}", label_visibility="collapsed")
+                    else:
+                        tp_freq[cvm] = freq[cvm]
+                with cols[4]: sales_active[cvm] = st.checkbox("", key=f"sales_on_{cvm}", label_visibility="collapsed")
+                with cols[5]:
+                    if sales_active[cvm]:
+                        sales_freq[cvm] = st.number_input(f"S_{cvm}", min_value=0, max_value=52, value=freq[cvm], step=1, key=f"sales_freq_{cvm}", label_visibility="collapsed")
+                    else:
+                        sales_freq[cvm] = freq[cvm]
+            else:
+                cols = st.columns([2.0, 1.8])
+                with cols[0]: st.markdown(f"**{cvm}**")
+                with cols[1]: freq[cvm] = st.number_input(f"F_{cvm}", min_value=0, max_value=52, value=default_freq, step=1, key=f"freq_{cvm}", label_visibility="collapsed")
+                tp_active[cvm] = False; tp_freq[cvm] = freq[cvm]
+                sales_active[cvm] = False; sales_freq[cvm] = freq[cvm]
+
+        _btn1, _btn2 = st.columns(2)
+        with _btn1:
+            if st.button("Apply Frequencies.", type="primary", use_container_width=True):
+                st.session_state["freq_applied"] = True
+                st.rerun()
+        with _btn2:
+            if st.button("Reset Frequencies.", use_container_width=True):
+                st.session_state["_pending_reset_freq"] = True
+                st.rerun()
+        if show_adv_freq:
+            st.markdown('<div style="background:#CED5CE;border-radius:8px;padding:10px 14px;margin:8px 0 10px 0;font-size:13px;color:#042B0B;line-height:1.7;">To change visit frequency for TP or Sales-based, click the checkboxes next to them.<br><b>TP Freq.:</b> visit frequency of Top Priority Pharmacies — Pharmacies that generated 50% of Net Sales in 2025.<br><b>Sales-based Freq.:</b> visit frequency for pharmacies where Net Sales 2025 exceeds the threshold above.</div>', unsafe_allow_html=True)
+
+    def calc_td(bdf, col, bldf):
+        r={}
+        for _,row in bdf.iterrows():
+            t=row.get("territory",""); k=row.get("CVM_clean","__t")
+            if t not in r: r[t]={}
+            r[t][k]=float(row[col])
+        for t in all_territories:
+            if t not in r: r[t]={}
+        # Only apply block moves if NOT from scenario (scenario only affects map+KPIs)
+        if not st.session_state.loaded_scenario_results:
+            for bid,nt in moved_blocks.items():
+                for _,row in bldf[bldf["Block_APO"]==bid].iterrows():
+                    rp=row["Sales_Rep"]; k=row.get("CVM_clean","__t"); cnt=float(row["count"]); rt=REP_TO_TERRITORY.get(rp,"")
+                    if rt in r and k in r.get(rt,{}): r[rt][k]-=cnt
+                    if nt not in r: r[nt]={}
+                    r[nt][k]=r[nt].get(k,0)+cnt
+        return r
+
+    cvm_pt = calc_td(rep_baseline_cvm,"count",block_rep_cvm)
+    tp_pt = calc_td(rep_baseline_tp,"count",block_rep_tp)
+    v5tp_pt = calc_td(rep_baseline_5visit_tp,"count",block_rep_5visit_tp)
+    # v2 and v5: also skip moved_blocks when scenario loaded
+    v2_pt={}
+    for _,row in rep_baseline_2visit.iterrows(): v2_pt[row["territory"]]=float(row["count"])
     for t in all_territories:
-        if t not in r: r[t]={}
-    # Only apply block moves if NOT from scenario (scenario only affects map+KPIs)
+        if t not in v2_pt: v2_pt[t]=0.0
     if not st.session_state.loaded_scenario_results:
         for bid,nt in moved_blocks.items():
-            for _,row in bldf[bldf["Block_APO"]==bid].iterrows():
-                rp=row["Sales_Rep"]; k=row.get("CVM_clean","__t"); cnt=float(row["count"]); rt=REP_TO_TERRITORY.get(rp,"")
-                if rt in r and k in r.get(rt,{}): r[rt][k]-=cnt
-                if nt not in r: r[nt]={}
-                r[nt][k]=r[nt].get(k,0)+cnt
-    return r
+            for _,row in block_rep_2visit[block_rep_2visit["Block_APO"]==bid].iterrows():
+                rt=REP_TO_TERRITORY.get(row["Sales_Rep"],"")
+                if rt in v2_pt: v2_pt[rt]-=float(row["count"])
+                v2_pt[nt]=v2_pt.get(nt,0)+float(row["count"])
+    v5_pt={}
+    for _,row in rep_baseline_5visit.iterrows(): v5_pt[row["territory"]]=float(row["count"])
+    for t in all_territories:
+        if t not in v5_pt: v5_pt[t]=0.0
+    if not st.session_state.loaded_scenario_results:
+        for bid,nt in moved_blocks.items():
+            for _,row in block_rep_5visit[block_rep_5visit["Block_APO"]==bid].iterrows():
+                rt=REP_TO_TERRITORY.get(row["Sales_Rep"],"")
+                if rt in v5_pt: v5_pt[rt]-=float(row["count"])
+                v5_pt[nt]=v5_pt.get(nt,0)+float(row["count"])
 
-cvm_pt = calc_td(rep_baseline_cvm,"count",block_rep_cvm)
-tp_pt = calc_td(rep_baseline_tp,"count",block_rep_tp)
-v5tp_pt = calc_td(rep_baseline_5visit_tp,"count",block_rep_5visit_tp)
-# v2 and v5: also skip moved_blocks when scenario loaded
-v2_pt={}
-for _,row in rep_baseline_2visit.iterrows(): v2_pt[row["territory"]]=float(row["count"])
-for t in all_territories:
-    if t not in v2_pt: v2_pt[t]=0.0
-if not st.session_state.loaded_scenario_results:
-    for bid,nt in moved_blocks.items():
-        for _,row in block_rep_2visit[block_rep_2visit["Block_APO"]==bid].iterrows():
-            rt=REP_TO_TERRITORY.get(row["Sales_Rep"],"")
-            if rt in v2_pt: v2_pt[rt]-=float(row["count"])
-            v2_pt[nt]=v2_pt.get(nt,0)+float(row["count"])
-v5_pt={}
-for _,row in rep_baseline_5visit.iterrows(): v5_pt[row["territory"]]=float(row["count"])
-for t in all_territories:
-    if t not in v5_pt: v5_pt[t]=0.0
-if not st.session_state.loaded_scenario_results:
-    for bid,nt in moved_blocks.items():
-        for _,row in block_rep_5visit[block_rep_5visit["Block_APO"]==bid].iterrows():
-            rt=REP_TO_TERRITORY.get(row["Sales_Rep"],"")
-            if rt in v5_pt: v5_pt[rt]-=float(row["count"])
-            v5_pt[nt]=v5_pt.get(nt,0)+float(row["count"])
+    with fc2:
+        # Frequency table always uses original 6 territories, never affected by scenarios
+        freq_territories = sorted([t for t in TERRITORY_TO_REP.keys()])
+        st.markdown('<span style="font-size:13px;color:#6D7F6E;font-style:italic;">This table always reflects the original 6-Rep territory data, independent of any loaded scenarios from Coverage Optimisation section.</span>', unsafe_allow_html=True)
+        # Baseline data from rep_baseline
+        baseline_visits = {}; baseline_pharma = {}; baseline_visited = {}
+        for _, row in rep_baseline.iterrows():
+            baseline_visits[row["territory"]] = int(row["total_visits"])
+            baseline_pharma[row["territory"]] = int(row["pharmacies"])
+            baseline_visited[row["territory"]] = int(row["visited_pharmacies"])
 
-with fc2:
-    # Frequency table always uses original 6 territories, never affected by scenarios
-    freq_territories = sorted([t for t in TERRITORY_TO_REP.keys()])
-    st.markdown('<span style="font-size:13px;color:#6D7F6E;font-style:italic;">This table always reflects the original 6-Rep territory data, independent of any loaded scenarios from Coverage Optimisation section.</span>', unsafe_allow_html=True)
-    # Baseline data from rep_baseline
-    baseline_visits = {}; baseline_pharma = {}; baseline_visited = {}
-    for _, row in rep_baseline.iterrows():
-        baseline_visits[row["territory"]] = int(row["total_visits"])
-        baseline_pharma[row["territory"]] = int(row["pharmacies"])
-        baseline_visited[row["territory"]] = int(row["visited_pharmacies"])
+        # Compute To Be visits per pharmacy using priority: TP > Sales-based > CVM
+        # ALWAYS use original territory from CSV — never affected by loaded scenarios
+        _orig_terr_map = dict(zip(block_df_original["Block_APO"], block_df_original["territory"]))
+        _freq_pharma = pharmacy_detail.copy()
+        _freq_pharma["_territory"] = _freq_pharma["Block_APO"].map(_orig_terr_map)
+        # DEBUG
+        _obs = _freq_pharma[_freq_pharma["CVM_clean"]=="Observe"]
 
-    # Compute To Be visits per pharmacy using priority: TP > Sales-based > CVM
-    # ALWAYS use original territory from CSV — never affected by loaded scenarios
-    _orig_terr_map = dict(zip(block_df_original["Block_APO"], block_df_original["territory"]))
-    _freq_pharma = pharmacy_detail.copy()
-    _freq_pharma["_territory"] = _freq_pharma["Block_APO"].map(_orig_terr_map)
-    # DEBUG
-    _obs = _freq_pharma[_freq_pharma["CVM_clean"]=="Observe"]
+        def calc_to_be_visits(row):
+            # If frequencies haven't been applied yet, To Be = As Is
+            if not st.session_state.get("freq_applied", False):
+                return row["Planned_Visits"], row["CVM_clean"]
 
-    def calc_to_be_visits(row):
-        # If frequencies haven't been applied yet, To Be = As Is
-        if not st.session_state.get("freq_applied", False):
-            return row["Planned_Visits"], row["CVM_clean"]
-
-        cvm = row["CVM_clean"]
-        is_tp = row.get("Top_Priority", 0) == 1
-        sales = row.get("FY2025", 0)
-        pv = row.get("Planned_Visits", 0)
-
-        # 2-visit: always fixed
-        if pv == 2: return 2, "2-visit"
-
-        # Get base CVM frequency
-        if cvm in freq:
-            base = freq[cvm]
-        elif cvm == "Observe":
-            base = freq.get("Observe", 0)
-        else:
-            base = 0
-
-        # 5-visit: use max(5, applicable frequency) — never drops below 5, overridden if freq is higher
-        if pv == 5:
-            result = max(5, base)
-            category = cvm
-            if sales_active.get(cvm, False) and sales >= sales_threshold:
-                result = max(5, sales_freq.get(cvm, base))
-                category = f"{cvm}-Sales"
-            if is_tp and tp_active.get(cvm, False):
-                result = max(5, tp_freq.get(cvm, base))
-                category = "5v-TP"
-            return result, category
-
-        # Apply overrides in priority order
-        result = base
-        category = cvm
-
-        # Sales-based override (if active and sales >= threshold)
-        if sales_active.get(cvm, False) and sales >= sales_threshold:
-            result = sales_freq.get(cvm, base)
-            category = f"{cvm}-Sales"
-
-        # Top Priority override (highest priority, if active)
-        if is_tp and tp_active.get(cvm, False):
-            result = tp_freq.get(cvm, base)
-            category = f"{cvm}-TP"
-
-        return result, category
-
-    _freq_pharma[["_to_be_visits", "_category"]] = _freq_pharma.apply(calc_to_be_visits, axis=1, result_type="expand")
-
-    # Aggregate per territory per CVM - ALL pharmacies in their CVM row
-    td = {}
-    for t in freq_territories:
-        t_ph = _freq_pharma[_freq_pharma["_territory"] == t]
-        aiv = baseline_visits.get(t, 0)
-        t_pharma_count = baseline_pharma.get(t, 0)
-        t_visited_count = baseline_visited.get(t, 0)
-        rep_name = TERRITORY_TO_REP.get(t, t)
-        rep_cap = REP_CAPACITY.get(rep_name, {"capacity": 1435})["capacity"]
-
-        cd = {}
-        tvc = 0; tvv = 0  # total visited count and visits
-        for cvm in CVM_WITH_OBS:
-            cvm_ph = t_ph[t_ph["CVM_clean"] == cvm]
-            cnt = len(cvm_ph)
-            vis = int(cvm_ph["_to_be_visits"].sum())
-            # TP override delta: compare TP pharmacies' to_be vs base CVM freq
-            tp_ph = cvm_ph[cvm_ph["Top_Priority"] == 1]
-            if tp_active.get(cvm, False):
-                # TP delta = sum of (to_be - base) for TP pharmacies
-                tp_base = sum(max(5, freq.get(cvm, 4)) if row["Planned_Visits"] == 5 else (2 if row["Planned_Visits"] == 2 else freq.get(cvm, 4)) for _, row in tp_ph.iterrows())
-                tp_delta = int(tp_ph["_to_be_visits"].sum()) - tp_base
-            else:
-                tp_delta = 0
-            # Sales override delta: non-TP pharmacies with sales >= threshold
-            if sales_active.get(cvm, False):
-                sales_ph = cvm_ph[(cvm_ph["FY2025"] >= sales_threshold) & (cvm_ph["Top_Priority"] != 1)]
-                sales_base = sum(max(5, freq.get(cvm, 4)) if row["Planned_Visits"] == 5 else (2 if row["Planned_Visits"] == 2 else freq.get(cvm, 4)) for _, row in sales_ph.iterrows())
-                sales_delta = int(sales_ph["_to_be_visits"].sum()) - sales_base
-            else:
-                sales_delta = 0
-
-            cd[cvm] = {"count": cnt, "visits": vis, "tp_delta": tp_delta, "sales_delta": sales_delta}
-            if cvm != "Observe":
-                tvc += cnt; tvv += vis
-            elif cvm == "Observe":
-                # Observe pharmacies only count as visited if user set Observe freq > 0 in sliders
-                # Never inherit activated state from Coverage Optimisation scenarios
-                obs_freq_set = freq.get("Observe", 0)
-                obs_visited = len(cvm_ph[cvm_ph["_to_be_visits"] > 0]) if obs_freq_set > 0 else 0
-                tvc += obs_visited; tvv += (vis if obs_freq_set > 0 else 0)
-
-        # 2-visit and 5-visit: informational (subset of CVM rows, not added separately)
-        v2 = t_ph[t_ph["Planned_Visits"] == 2]
-        v5 = t_ph[t_ph["Planned_Visits"] == 5]
-        v2c = len(v2); v2v = int(v2["_to_be_visits"].sum())
-        v5c = len(v5); v5v = int(v5["_to_be_visits"].sum())
-
-        tbv = tvv  # Total = sum of CVM rows (2v/5v already included)
-        # If frequencies not yet applied, To Be must equal As Is exactly
-        if not st.session_state.get("freq_applied", False):
-            tbv = aiv
-            tvc = t_visited_count
-        t_cap_ai = round(aiv / rep_cap * 100, 1) if rep_cap > 0 else 0
-        t_cap_tb = round(tbv / rep_cap * 100, 1) if rep_cap > 0 else 0
-        t_cov_ai = round(t_visited_count / t_pharma_count * 100, 1) if t_pharma_count > 0 else 0
-        t_cov_tb = round(tvc / t_pharma_count * 100, 1) if t_pharma_count > 0 else 0
-
-        td[t] = {"rep": rep_name, "cvm": cd, "tv": {"count": tvc, "visits": tvv},
-                 "v2c": v2c, "v2v": v2v, "v5c": v5c, "v5v": v5v,
-                 "cov_tb_count": tvc,
-                 "ai": aiv, "tb": tbv, "dv": tbv - aiv,
-                 "aivpd": round(aiv / WORKING_DAYS, 1), "tbvpd": round(tbv / WORKING_DAYS, 1),
-                 "dvpd": round((tbv - aiv) / WORKING_DAYS, 1),
-                 "cap_ai": t_cap_ai, "cap_tb": t_cap_tb, "cov_ai": t_cov_ai, "cov_tb": t_cov_tb}
-
-    # Compute total TP and Sales overrides per territory
-    for t in freq_territories:
-        tp_total = sum(td[t]["cvm"][c]["tp_delta"] for c in CVM_WITH_OBS)
-        sales_total = sum(td[t]["cvm"][c]["sales_delta"] for c in CVM_WITH_OBS)
-        td[t]["tpo"] = tp_total
-        td[t]["sales_o"] = sales_total
-
-    # As Is CVM data from baseline - ALL pharmacies in their CVM row
-    _as_is_cvm = {}
-    _as_is_v2 = {}; _as_is_v5 = {}
-    for t in freq_territories:
-        t_ph = _freq_pharma[_freq_pharma["_territory"] == t]
-        _as_is_cvm[t] = {}
-        for cvm in CVM_WITH_OBS:
-            cvm_ph = t_ph[t_ph["CVM_clean"] == cvm]
-            _as_is_cvm[t][cvm] = {"count": len(cvm_ph), "visits": int(cvm_ph["Planned_Visits"].sum())}
-        _as_is_v2[t] = {"count": len(t_ph[t_ph["Planned_Visits"]==2]), "visits": int(t_ph[t_ph["Planned_Visits"]==2]["Planned_Visits"].sum())}
-        _as_is_v5[t] = {"count": len(t_ph[t_ph["Planned_Visits"]==5]), "visits": int(t_ph[t_ph["Planned_Visits"]==5]["Planned_Visits"].sum())}
-
-    total_cap = sum(REP_CAPACITY.get(TERRITORY_TO_REP.get(t,""),{"capacity":0})["capacity"] for t in freq_territories)
-    total_ai_visits = sum(td[t]["ai"] for t in freq_territories)
-    total_tb_visits = sum(td[t]["tb"] for t in freq_territories)
-
-    # Filter by territory
-    freq_filter = st.multiselect("Filter by Sales Rep:", options=["All"] + [TERRITORY_TO_REP.get(t,t).split()[0] + f"|{t}" for t in freq_territories], format_func=lambda x: x.split("|")[0] if "|" in x else x, default=["All"], key="freq_rep_filter")
-    if "All" in freq_filter or not freq_filter:
-        show_territories = freq_territories
-        show_individual = False
-    else:
-        selected_keys = [x.split("|")[1] if "|" in x else x for x in freq_filter]
-        show_territories = [t for t in freq_territories if t in selected_keys]
-        show_individual = True
-
-    show_total = not show_individual
-
-    disp_territories = show_territories if show_individual else []
-    html = f'<div class="freq-table-wrap"><table style="width:100%;border-collapse:collapse;font-size:15px;">'
-    # Header row 1
-    html += f'<tr style="background:{HDR_BG};color:#F7EFE6;"><th rowspan="2" style="padding:8px;text-align:left;min-width:130px;">Visits</th>'
-    for t in disp_territories:
-        tc = get_color(t)
-        html += f'<th colspan="4" style="padding:6px;text-align:center;border-left:2px solid #0a4a1a;">{TERRITORY_TO_REP.get(t,t).split()[0]}</th>'
-    if show_total:
-        html += f'<th colspan="4" style="padding:6px;text-align:center;border-left:2px solid #0a4a1a;">TOTAL</th>'
-    html += '</tr>'
-    # Header row 2
-    html += f'<tr style="background:{HDR_BG};color:#F7EFE6;">'
-    for _ in range(len(disp_territories) + (1 if show_total else 0)):
-        html += '<th style="padding:3px;text-align:center;border-left:2px solid #0a4a1a;font-size:14px;width:90px;max-width:90px;"># Pharm.</th>'
-        html += '<th style="padding:3px;text-align:center;font-size:14px;">As Is</th>'
-        html += f'<th style="padding:3px;text-align:center;font-size:14px;background:{HDR_BG};color:#F7EFE6;">To Be</th>'
-        html += '<th style="padding:3px;text-align:center;font-size:14px;">Change</th>'
-    html += '</tr>'
-
-    def mk_cells(data_list, bold=False, total_override=None):
-        """Generate cells for territories + total. data_list = [(ph, ai, tb), ...]"""
-        cells = ""
-        s = "font-weight:bold;" if bold else ""
-        tot_ph=0;tot_ai=0;tot_tb=0
-        for ph,ai,tb in data_list:
-            ch=tb-ai; tot_ph+=ph;tot_ai+=ai;tot_tb+=tb
-            cs=dc(ch) if ch!=0 else ""
-            cells+=f'<td style="padding:3px;text-align:center;border-left:2px solid #eee;width:90px;max-width:90px;{s}">{ph}</td>'
-            cells+=f'<td style="padding:3px;text-align:center;{s}">{ai:,}</td>'
-            cells+=f'<td style="padding:3px;text-align:center;background:#F0E5D8;{s}">{tb:,}</td>'
-            cells+=f'<td style="padding:3px;text-align:center;{cs}">{ch:+,}</td>'
-        if show_total:
-            # Use total_override if provided (covers all territories, not just displayed)
-            if total_override:
-                tot_ph=sum(d[0] for d in total_override);tot_ai=sum(d[1] for d in total_override);tot_tb=sum(d[2] for d in total_override)
-            tch=tot_tb-tot_ai;cs=dc(tch) if tch!=0 else ""
-            cells+=f'<td style="padding:3px;text-align:center;border-left:2px solid #eee;width:90px;max-width:90px;font-weight:bold;">{tot_ph}</td>'
-            cells+=f'<td style="padding:3px;text-align:center;font-weight:bold;">{tot_ai:,}</td>'
-            cells+=f'<td style="padding:3px;text-align:center;background:#F0E5D8;font-weight:bold;">{tot_tb:,}</td>'
-            cells+=f'<td style="padding:3px;text-align:center;font-weight:bold;{cs}">{tch:+,}</td>'
-        return cells
-
-    # CVM rows
-    for cvm in CVM_WITH_OBS:
-        data = [(_as_is_cvm[t][cvm]["count"], _as_is_cvm[t][cvm]["visits"], td[t]["cvm"][cvm]["visits"]) for t in disp_territories]
-        # For total column, use all show_territories
-        total_data = [(_as_is_cvm[t][cvm]["count"], _as_is_cvm[t][cvm]["visits"], td[t]["cvm"][cvm]["visits"]) for t in show_territories]
-        html += f'<tr style="border-bottom:1px solid #eee;"><td style="padding:4px;font-weight:bold;">{cvm}</td>{mk_cells(data, total_override=total_data)}</tr>'
-
-    # Informational subsets
-    data_2v = [(_as_is_v2[t]["count"], _as_is_v2[t]["visits"], td[t]["v2v"]) for t in disp_territories]
-    total_2v = [(_as_is_v2[t]["count"], _as_is_v2[t]["visits"], td[t]["v2v"]) for t in show_territories]
-    html += f'<tr style="border-bottom:1px solid #eee;"><td style="padding:4px;font-size:14px;">  ↳ of which 2-visit</td>{mk_cells(data_2v, total_override=total_2v)}</tr>'
-    data_5v = [(_as_is_v5[t]["count"], _as_is_v5[t]["visits"], td[t]["v5v"]) for t in disp_territories]
-    total_5v = [(_as_is_v5[t]["count"], _as_is_v5[t]["visits"], td[t]["v5v"]) for t in show_territories]
-    html += f'<tr style="border-bottom:1px solid #eee;"><td style="padding:4px;font-size:14px;">  ↳ of which 5-visit</td>{mk_cells(data_5v, total_override=total_5v)}</tr>'
-
-    # Total
-    data_total = [(baseline_pharma.get(t,0), td[t]["ai"], td[t]["tb"]) for t in disp_territories]
-    total_all = [(baseline_pharma.get(t,0), td[t]["ai"], td[t]["tb"]) for t in show_territories]
-    html += f'<tr style="border-bottom:1px solid #eee;background:#F0E5D8;"><td style="padding:4px;font-weight:bold;">Total</td>{mk_cells(data_total, bold=True, total_override=total_all)}</tr>'
-
-    # TP override (change only)
-    for label, key in [("Top Priority", "tpo"), ("Sales-based", "sales_o")]:
-        html += f'<tr style="border-bottom:1px solid #eee;"><td style="padding:4px;font-weight:bold;">{label}</td>'
-        tot_ch = 0
-        for t in disp_territories:
-            ch = td[t][key]; tot_ch += ch; cs = dc(ch) if ch!=0 else ""
-            html += f'<td style="padding:3px;text-align:center;border-left:2px solid #eee;" colspan="3"></td>'
-            html += f'<td style="padding:3px;text-align:center;{cs}">{ch:+,}</td>'
-        # Add non-displayed territories to total
-        for t in show_territories:
-            if t not in disp_territories: tot_ch += td[t][key]
-        if show_total:
-            cs = dc(tot_ch) if tot_ch!=0 else ""
-            html += f'<td style="padding:3px;text-align:center;border-left:2px solid #eee;" colspan="3"></td>'
-            html += f'<td style="padding:3px;text-align:center;font-weight:bold;{cs}">{tot_ch:+,}</td>'
-        html += '</tr>'
-
-    # Separator
-    html += f'<tr><td colspan="100" style="border-bottom:2px solid {HDR_BG};"></td></tr>'
-
-    # Coverage, Capacity, Visits/Day
-    for metric_label, ai_key, tb_key, ai_num_fn, ai_den_fn in [
-        ("Coverage", "cov_ai", "cov_tb", lambda t: baseline_visited.get(t,0), lambda t: baseline_pharma.get(t,0)),
-        ("Capacity", "cap_ai", "cap_tb", lambda t: td[t]["ai"], lambda t: REP_CAPACITY.get(TERRITORY_TO_REP.get(t,""),{"capacity":1435})["capacity"]),
-    ]:
-        html += f'<tr style="border-bottom:1px solid #eee;"><td style="padding:4px;font-weight:bold;">{metric_label}</td>'
-        tot_ai_n=0;tot_ai_d=0;tot_tb_n=0;tot_tb_d=0
-        for t in disp_territories:
-            ai_p=td[t][ai_key]; tb_p=td[t][tb_key]; ch=round(tb_p-ai_p,1); cs=dc(ch) if ch!=0 else ""
-            tot_ai_n+=ai_num_fn(t);tot_ai_d+=ai_den_fn(t)
-            if tb_key=="cov_tb": tot_tb_n+=td[t]["cov_tb_count"]; tot_tb_d+=baseline_pharma.get(t,0)
-            else: tot_tb_n+=td[t]["tb"]; tot_tb_d+=ai_den_fn(t)
-            html+=f'<td style="padding:3px;text-align:center;border-left:2px solid #eee;" colspan="2">{ai_p}%</td>'
-            html+=f'<td style="padding:3px;text-align:center;background:#F0E5D8;">{tb_p}%</td>'
-            html+=f'<td style="padding:3px;text-align:center;{cs}">{ch:+.1f}%</td>'
-        for t in show_territories:
-            if t not in disp_territories:
-                tot_ai_n+=ai_num_fn(t);tot_ai_d+=ai_den_fn(t)
-                if tb_key=="cov_tb": tot_tb_n+=td[t]["cov_tb_count"]; tot_tb_d+=baseline_pharma.get(t,0)
-                else: tot_tb_n+=td[t]["tb"]; tot_tb_d+=ai_den_fn(t)
-        if show_total:
-            tot_ai=round(tot_ai_n/tot_ai_d*100,1) if tot_ai_d>0 else 0
-            tot_tb=round(tot_tb_n/tot_tb_d*100,1) if tot_tb_d>0 else 0
-            tch=round(tot_tb-tot_ai,1);cs=dc(tch) if tch!=0 else ""
-            html+=f'<td style="padding:3px;text-align:center;border-left:2px solid #eee;font-weight:bold;" colspan="2">{tot_ai}%</td>'
-            html+=f'<td style="padding:3px;text-align:center;background:#F0E5D8;font-weight:bold;">{tot_tb}%</td>'
-            html+=f'<td style="padding:3px;text-align:center;font-weight:bold;{cs}">{tch:+.1f}%</td>'
-        html += '</tr>'
-
-    # Visits/Day
-    html += f'<tr style="border-bottom:1px solid #eee;"><td style="padding:4px;font-weight:bold;">Visits/Day</td>'
-    tot_ai_vpd=0;tot_tb_vpd=0
-    for t in disp_territories:
-        ch=td[t]["dvpd"];cs=dc(ch) if ch!=0 else ""
-        tot_ai_vpd+=td[t]["aivpd"];tot_tb_vpd+=td[t]["tbvpd"]
-        html+=f'<td style="padding:3px;text-align:center;border-left:2px solid #eee;" colspan="2">{td[t]["aivpd"]}</td>'
-        html+=f'<td style="padding:3px;text-align:center;background:#F0E5D8;">{td[t]["tbvpd"]}</td>'
-        html+=f'<td style="padding:3px;text-align:center;{cs}">{ch:+.1f}</td>'
-    for t in show_territories:
-        if t not in disp_territories: tot_ai_vpd+=td[t]["aivpd"]; tot_tb_vpd+=td[t]["tbvpd"]
-    if show_total:
-        tch=round(tot_tb_vpd-tot_ai_vpd,1)
-        if abs(tch) < 0.15: tch = 0.0  # suppress rounding noise
-        cs=dc(tch) if tch!=0 else ""
-        html+=f'<td style="padding:3px;text-align:center;border-left:2px solid #eee;font-weight:bold;" colspan="2">{round(tot_ai_vpd,1)}</td>'
-        html+=f'<td style="padding:3px;text-align:center;background:#F0E5D8;font-weight:bold;">{round(tot_tb_vpd,1)}</td>'
-        html+=f'<td style="padding:3px;text-align:center;font-weight:bold;{cs}">{tch:+.1f}</td>'
-    html += '</tr>'
-
-    html += '</table></div>'
-    st.markdown(html, unsafe_allow_html=True)
-
-# DISTANCE CALCULATOR
-st.divider()
-st.markdown('<div id="distance-calculator"></div>', unsafe_allow_html=True)
-st.markdown('<h3 style="color:#042B0B;-webkit-text-fill-color:#042B0B;font-weight:bold;">Distance Calculator.</h3>', unsafe_allow_html=True)
-st.markdown('<div style="background:#263F26;border-radius:10px;padding:12px 16px;margin:6px 0 12px 0;width:fit-content;max-width:100%;font-size:14px;color:#F7EFE6;line-height:1.7;">Estimate straight-line travel distances between two points — useful for checking Rep coverage areas and block accessibility.</div>', unsafe_allow_html=True)
-dc1,dc2,dc3 = st.columns([1,1,1])
-bc_dict = dict(zip(block_centroids["Block_APO"], zip(block_centroids["lat"],block_centroids["lng"])))
-from_options = list(REP_HOME.keys()) + sorted(block_centroids["Block_APO"].tolist())
-with dc1:
-    fr = st.selectbox("From:", options=from_options, key="dist_from", format_func=lambda x: f"🏠 {x}" if x in REP_HOME else f"Block {x}")
-with dc2:
-    to = st.selectbox("To:", options=from_options, key="dist_to", format_func=lambda x: f"🏠 {x}" if x in REP_HOME else f"Block {x}")
-with dc3:
-    def get_coords(x):
-        if x in REP_HOME: return REP_HOME[x]["lat"], REP_HOME[x]["lng"]
-        if x in bc_dict: return bc_dict[x]
-        return None, None
-    lat1,lng1 = get_coords(fr); lat2,lng2 = get_coords(to)
-    if lat1 and lat2:
-        dist = round(haversine_km(lat1,lng1,lat2,lng2),1)
-        fr_label = f"🏠 {fr}" if fr in REP_HOME else f"Block {fr}"
-        to_label = f"🏠 {to}" if to in REP_HOME else f"Block {to}"
-        st.markdown(f'<div style="padding:16px;background:#F0E5D8;border-radius:6px;margin-top:24px;"><strong style="font-size:20px;">{dist} km</strong><br>{fr_label} → {to_label}</div>', unsafe_allow_html=True)
-
-# BLOCK DETAILS
-st.divider()
-st.markdown('<div id="block-details"></div>', unsafe_allow_html=True)
-st.markdown('<h3 style="color:#042B0B;-webkit-text-fill-color:#042B0B;font-weight:bold;">Block Details.</h3>', unsafe_allow_html=True)
-st.markdown('<div style="background:#263F26;border-radius:10px;padding:12px 16px;margin:6px 0 12px 0;width:fit-content;max-width:100%;font-size:14px;color:#F7EFE6;line-height:1.7;">Detailed view of all IQVIA blocks with pharmacy counts and total Net Sales 2025. 📍 km = straight-line distance from the assigned rep\'s home to the block centroid.</div>', unsafe_allow_html=True)
-bm = pharma_current.groupby("Block_APO").agg(territory=("current_territory","first"),plz_count=("PLZ","nunique"),pharmacies=("EAN","count"),
-    visited=("CVM_clean",lambda x:x.isin(visited_cvms).sum()),top_pharmacies=("Top_Priority","sum"),visits=("Planned_Visits","sum"),total_sales=("FY2025","sum")).reset_index()
-bm["coverage"]=(bm["visited"]/bm["pharmacies"]*100).round(1); bm["vpd"]=(bm["visits"]/WORKING_DAYS).round(1)
-bm["spp"]=(bm["total_sales"]/bm["plz_count"]).round(0); bm["spa"]=(bm["total_sales"]/bm["pharmacies"]).round(0)
-bm["ss"]=(bm["total_sales"]/bm["total_sales"].sum()*100).round(2); bm["rep"]=bm["territory"].map(TERRITORY_TO_REP).fillna(bm["territory"])
-bm=bm.merge(block_centroids,on="Block_APO",how="left")
-def cd2(row):
-    h=REP_HOME.get(row.get("rep",""))
-    if h and pd.notna(row.get("lat")): return round(haversine_km(h["lat"],h["lng"],row["lat"],row["lng"]),1)
-    return None
-bm["distance_km"]=bm.apply(cd2,axis=1)
-bf1,bf2=st.columns([1,3])
-with bf1: btf=st.selectbox("Filter by territory:",options=["All"]+sorted_territories,key="btf")
-with bf2:
-    fb=bm if btf=="All" else bm[bm["territory"]==btf]
-    sb2=st.selectbox("Search block:",options=["Top 10 by Sales"]+sorted(fb["Block_APO"].tolist()),key="bs")
-db=fb.nlargest(10,"total_sales") if sb2=="Top 10 by Sales" else bm[bm["Block_APO"]==sb2]
-for _,br in db.iterrows():
-    ds=f" · 📍 {br['distance_km']} km" if pd.notna(br.get("distance_km")) else ""
-    with st.expander(f"Block {br['Block_APO']} — {br['rep'].split()[0]} ({br['territory']}) — {int(br['pharmacies'])} ph. — {br['total_sales']:,.0f} sales{ds}"):
-        st.markdown(f"**PLZ:** {int(br['plz_count'])} · **Pharmacies:** {int(br['pharmacies'])} · **Visited:** {int(br['visited'])} · **Coverage:** {br['coverage']}%<br>**Top Pharmacies:** {int(br['top_pharmacies'])} · **Visits:** {int(br['visits'])}<br>**Net Sales 2025:** {br['total_sales']:,.0f} · **Sales/PLZ:** {br['spp']:,.0f} · **Sales/Pharmacy:** {br['spa']:,.0f} · **Share:** {br['ss']}%", unsafe_allow_html=True)
-        bp=pharma_current[pharma_current["Block_APO"]==br["Block_APO"]]
-        pm=bp.groupby("PLZ").agg(pharmacies=("EAN","count"),visited=("CVM_clean",lambda x:x.isin(visited_cvms).sum()),top=("Top_Priority","sum"),visits=("Planned_Visits","sum"),sales=("FY2025","sum")).reset_index()
-        pm["coverage"]=(pm["visited"]/pm["pharmacies"]*100).round(1); pm["vpd"]=(pm["visits"]/WORKING_DAYS).round(1); pm=pm.sort_values("sales",ascending=False)
-        for _,pr in pm.iterrows():
-            with st.expander(f"    PLZ {int(pr['PLZ'])} — {int(pr['pharmacies'])} ph. — {pr['sales']:,.0f} sales"):
-                st.markdown(f"**Pharmacies:** {int(pr['pharmacies'])} · **Visited:** {int(pr['visited'])} · **Coverage:** {pr['coverage']}% · **Top:** {int(pr['top'])}", unsafe_allow_html=True)
-                for _,ph in bp[bp["PLZ"]==pr["PLZ"]].sort_values("FY2025",ascending=False).iterrows():
-                    ts2="⭐ " if ph["Top_Priority"]==1 else ""
-                    st.markdown(f"&nbsp;&nbsp;&nbsp;&nbsp;{ts2}**{ph['Name']}** — {ph['CVM_clean']} — {ph['FY2025']:,.0f} sales", unsafe_allow_html=True)
-
-# OBSERVE PHARMACIES
-st.divider()
-st.markdown('<div id="observe-pharmacies"></div>', unsafe_allow_html=True)
-st.markdown('<h3 style="color:#042B0B;-webkit-text-fill-color:#042B0B;font-weight:bold;">Observe Pharmacies.</h3>', unsafe_allow_html=True)
-st.markdown('<div style="background:#263F26;border-radius:10px;padding:12px 16px;margin:6px 0 12px 0;width:fit-content;max-width:100%;font-size:14px;color:#F7EFE6;line-height:1.7;">Top Observe pharmacies ranked by Net Sales 2025 — pharmacies not currently in the call plan that could be activated to increase coverage.</div>', unsafe_allow_html=True)
-obs=pharma_current[pharma_current["CVM_clean"]=="Observe"].copy().sort_values("FY2025",ascending=False)
-obs["current_territory"]=obs["current_territory"].fillna("Unknown")
-no=pharma_current[pharma_current["CVM_clean"]!="Observe"]
-pla=no.groupby("PLZ")["FY2025"].mean().round(0).to_dict()
-plc=pharma_current.groupby("PLZ")["EAN"].count().to_dict()
-obs["PLZ_Avg_Sales"]=obs["PLZ"].map(pla).fillna(0)
-obs["PLZ_Pharma_Count"]=obs["PLZ"].map(plc).fillna(0).astype(int)
-st.markdown(f'**{len(obs)} Observe pharmacies** with total sales of **{obs["FY2025"].sum():,.0f}** — not currently visited.')
-to2=obs.head(20)
-if len(to2)>0:
-    oh=f'<table style="width:100%;border-collapse:collapse;font-size:15px;"><tr style="background:{HDR_BG};color:#F7EFE6;">'
-    for c in ["Rank","Name","PLZ","Ort","Block","Sales Rep","Net Sales 2025","PLZ Avg Sales","PLZ # Pharm."]:
-        oh+=f'<th style="padding:8px;text-align:center;">{c}</th>'
-    oh+='</tr>'
-    for i,(_,r) in enumerate(to2.iterrows()):
-        oh+=f'<tr style="border-bottom:1px solid #eee;"><td style="padding:4px;text-align:center;">{i+1}</td><td style="padding:4px;">{r["Name"]}</td><td style="padding:4px;text-align:center;">{int(r["PLZ"])}</td><td style="padding:4px;">{r["Ort"]}</td><td style="padding:4px;text-align:center;">{int(r["Block_APO"])}</td><td style="padding:4px;text-align:center;">{r["Sales_Rep"]}</td><td style="padding:4px;text-align:center;">{r["FY2025"]:,.0f}</td><td style="padding:4px;text-align:center;">{r["PLZ_Avg_Sales"]:,.0f}</td><td style="padding:4px;text-align:center;">{r["PLZ_Pharma_Count"]}</td></tr>'
-    oh+='</table>'; st.markdown(oh, unsafe_allow_html=True)
-
-# TERRITORY OPTIMIZATION: ADD 7TH REP
-st.divider()
-st.markdown('<div id="coverage-optimisation"></div>', unsafe_allow_html=True)
-st.markdown('<h3 style="color:#042B0B;-webkit-text-fill-color:#042B0B;font-weight:bold;">Coverage Optimisation.</h3>', unsafe_allow_html=True)
-st.markdown('''<div style="background:#263F26;border-radius:10px;padding:12px 16px;margin:6px 0 12px 0;width:fit-content;max-width:100%;font-size:14px;color:#F7EFE6;line-height:1.7;">Redistribute all blocks across 7 Reps (6 existing + 1 new) to increase coverage while keeping capacity balanced and respecting language groups.<br><br>How it works:<br>1. Selects top Observe pharmacies by sales to reach target coverage.<br>2. Recalculates all block visits with new frequencies.<br>3. Finds optimal new Rep location within their language region.<br>4. Redistributes ALL blocks among 7 Reps within each language group.<br>5. Balances capacity (target: 90–110% for every Rep).</div>''', unsafe_allow_html=True)
-
-wi1,wi2=st.columns([1,2])
-with wi1:
-    total_pharma = len(pharma_current)
-    total_visited = pharma_current[pharma_current["CVM_clean"].isin(visited_cvms)].shape[0]
-    current_cov = round(total_visited/total_pharma*100,1) if total_pharma>0 else 0
-    st.markdown(f"**Current coverage: {current_cov}%** ({total_visited}/{total_pharma})")
-    wi_target = st.number_input("Target coverage %:",min_value=50.0,max_value=100.0,value=85.0,step=1.0,key="wi_tgt")
-    wi_vpd = st.number_input("New Rep Visits/Day:",min_value=1.0,max_value=15.0,value=7.0,step=0.5,key="wi_vpd")
-    wi_max_visits = int(wi_vpd * WORKING_DAYS)
-    st.markdown(f"Max visits/year: **{wi_max_visits}**")
-    st.markdown("**Visit frequency:**")
-    wi_sales_threshold = st.number_input("Sales threshold (≥):", min_value=0, max_value=500000, value=10000, step=1000, key="wi_sales_thresh")
-    st.markdown(
-        '<div style="display:grid;grid-template-columns:2.0fr 1.8fr 0.3fr 1.8fr 0.3fr 1.8fr;gap:4px;font-size:14px;font-weight:bold;padding:4px 0;">'
-        '<span style="font-weight:700;">CVM</span><span style="font-weight:700;">Freq.</span><span></span><span style="font-weight:700;">TP Freq.</span><span></span><span style="font-weight:700;">Sales Freq.</span>'
-        '</div>', unsafe_allow_html=True)
-    wi_freq = {}; wi_tp_freq = {}; wi_tp_active = {}; wi_sales_freq = {}; wi_sales_active = {}
-    for cvm in CVM_CATEGORIES:
-        cols = st.columns([2.0, 1.8, 0.3, 1.8, 0.3, 1.8])
-        with cols[0]: st.markdown(f"**{cvm}**")
-        with cols[1]: wi_freq[cvm] = st.number_input(f"WI {cvm}",min_value=0,max_value=52,value=4,step=1,key=f"wi_freq_{cvm}",label_visibility="collapsed")
-        with cols[2]: wi_tp_active[cvm] = st.checkbox("TP",key=f"wi_tp_on_{cvm}",label_visibility="collapsed")
-        with cols[3]:
-            if wi_tp_active.get(cvm, False):
-                wi_tp_freq[cvm] = st.number_input(f"WI TP {cvm}",min_value=0,max_value=52,value=wi_freq[cvm],step=1,key=f"wi_tp_{cvm}",label_visibility="collapsed")
-            else:
-                wi_tp_freq[cvm] = wi_freq[cvm]
-        with cols[4]: wi_sales_active[cvm] = st.checkbox("Sales",key=f"wi_sales_on_{cvm}",label_visibility="collapsed")
-        with cols[5]:
-            if wi_sales_active.get(cvm, False):
-                wi_sales_freq[cvm] = st.number_input(f"WI S {cvm}",min_value=0,max_value=52,value=wi_freq[cvm],step=1,key=f"wi_sales_freq_{cvm}",label_visibility="collapsed")
-            else:
-                wi_sales_freq[cvm] = wi_freq[cvm]
-    # Current Observe — separate row with note
-    obs_cols = st.columns([2.0, 1.8, 0.3, 1.8, 0.3, 1.8])
-    with obs_cols[0]: st.markdown("**Current Observe**")
-    with obs_cols[1]: wi_freq["Observe"] = st.number_input("WI Observe",min_value=0,max_value=52,value=4,step=1,key="wi_freq_Observe",label_visibility="collapsed")
-    with obs_cols[2]: wi_tp_active["Observe"] = st.checkbox("TP",key="wi_tp_on_Observe",label_visibility="collapsed")
-    with obs_cols[3]:
-        if wi_tp_active.get("Observe", False):
-            wi_tp_freq["Observe"] = st.number_input("WI TP Observe",min_value=0,max_value=52,value=wi_freq["Observe"],step=1,key="wi_tp_Observe",label_visibility="collapsed")
-        else:
-            wi_tp_freq["Observe"] = wi_freq["Observe"]
-    with obs_cols[4]: wi_sales_active["Observe"] = st.checkbox("Sales",key="wi_sales_on_Observe",label_visibility="collapsed")
-    with obs_cols[5]:
-        if wi_sales_active.get("Observe", False):
-            wi_sales_freq["Observe"] = st.number_input("WI S Observe",min_value=0,max_value=52,value=wi_freq["Observe"],step=1,key="wi_sales_freq_Observe",label_visibility="collapsed")
-        else:
-            wi_sales_freq["Observe"] = wi_freq["Observe"]
-    st.markdown('<p style="font-size:13px;color:#6D7F6E;font-style:italic;margin:4px 0;">Current Observe frequency will be applied to selected Observe pharmacies to increase coverage. Non-selected Observe pharmacies get 0 visits.<br><b>TP Freq.:</b> visit frequency of Top Priority Pharmacies — Pharmacies that generated 50% of Net Sales in 2025.<br><b>Sales Freq.:</b> visit frequency depending on Net Sales 2025 (threshold set above).</p>', unsafe_allow_html=True)
-    st.markdown("**New Rep language:**")
-    wi_new_lang = st.selectbox("New Rep language:", options=["German", "French", "Italian"], key="wi_lang", label_visibility="collapsed")
-    st.markdown("**Manual placement** (optional — leave 0 for auto):")
-    mc1, mc2 = st.columns(2)
-    with mc1: wi_manual_lat = st.number_input("Lat:", min_value=0.0, max_value=90.0, value=0.0, step=0.01, format="%.4f", key="wi_mlat")
-    with mc2: wi_manual_lng = st.number_input("Lng:", min_value=0.0, max_value=30.0, value=0.0, step=0.01, format="%.4f", key="wi_mlng")
-    wi_preserve = st.checkbox("Preserve existing territory boundaries", value=True,
-        help="When checked, existing reps keep their current blocks unless significantly over capacity. Only blocks near the new Rep are reassigned.")
-    if st.button("Generate Scenario.", type="primary"):
-        st.session_state["wi_run"] = True
-    if st.button("Reset Scenario."):
-        st.session_state["wi_run"] = False
-        st.session_state["wi_scenarios"] = []
-        st.session_state["wi_loaded_scenario"] = None
-        st.session_state.activated_observe_eans = set()
-        st.session_state.activated_obs_freq = 4
-        st.session_state.loaded_scenario_results = None
-        st.session_state.assignments = dict(zip(block_df_original["Block_APO"], block_df_original["territory"]))
-        st.session_state.custom_territories = {}
-        st.session_state.undo_stack = []
-        st.session_state.selected_blocks_list = []
-        st.rerun()
-
-with wi2:
-    if st.session_state.get("wi_run", False):
-        # Step 1: Select Observe pharmacies to activate
-        needed_new_visited = int(np.ceil(wi_target/100*total_pharma)) - total_visited
-        needed_new_visited = max(0, needed_new_visited)
-
-        observe_ranked = pharma_current[pharma_current["CVM_clean"]=="Observe"].sort_values("FY2025", ascending=False)
-        activated_observe = observe_ranked.head(needed_new_visited)
-        activated_blocks = set(activated_observe["Block_APO"].unique())
-
-        # Step 2: Recalculate block visits with user frequencies
-        pc = pharma_current.copy()
-        # Mark activated observe pharmacies
-        activated_eans = set(activated_observe["EAN"].astype(str))
-        def calc_new_visits(row):
             cvm = row["CVM_clean"]
             is_tp = row.get("Top_Priority", 0) == 1
             sales = row.get("FY2025", 0)
+            pv = row.get("Planned_Visits", 0)
+
             # 2-visit: always fixed
-            if row["Planned_Visits"] == 2: return 2
-            # 5-visit: use max(5, applicable frequency) — never drops below 5
-            if row["Planned_Visits"] == 5:
-                base = wi_freq.get(cvm, 5)
+            if pv == 2: return 2, "2-visit"
+
+            # Get base CVM frequency
+            if cvm in freq:
+                base = freq[cvm]
+            elif cvm == "Observe":
+                base = freq.get("Observe", 0)
+            else:
+                base = 0
+
+            # 5-visit: use max(5, applicable frequency) — never drops below 5, overridden if freq is higher
+            if pv == 5:
                 result = max(5, base)
-                if wi_sales_active.get(cvm, False) and sales >= wi_sales_threshold:
-                    result = max(5, wi_sales_freq.get(cvm, base))
-                if is_tp and wi_tp_active.get(cvm, False):
-                    result = max(5, wi_tp_freq.get(cvm, base))
-                return result
-            # Observe: only activated ones get visits
-            if cvm == "Observe":
-                if str(row["EAN"]) in activated_eans:
-                    obs_f = wi_freq.get("Observe", 0) if wi_freq.get("Observe", 0) > 0 else wi_freq.get("Build", 4)
-                    return obs_f
-                return 0
-            # Regular CVM — priority: TP > Sales > CVM
-            base = wi_freq.get(cvm, 0)
+                category = cvm
+                if sales_active.get(cvm, False) and sales >= sales_threshold:
+                    result = max(5, sales_freq.get(cvm, base))
+                    category = f"{cvm}-Sales"
+                if is_tp and tp_active.get(cvm, False):
+                    result = max(5, tp_freq.get(cvm, base))
+                    category = "5v-TP"
+                return result, category
+
+            # Apply overrides in priority order
             result = base
-            if wi_sales_active.get(cvm, False) and sales >= wi_sales_threshold:
-                result = wi_sales_freq.get(cvm, base)
-            if is_tp and wi_tp_active.get(cvm, False):
-                result = wi_tp_freq.get(cvm, base)
-            return result
-        pc["new_visits"] = pc.apply(calc_new_visits, axis=1)
+            category = cvm
 
-        # Activated observe count per block
-        act_obs_per_block = activated_observe.groupby("Block_APO").size().to_dict()
+            # Sales-based override (if active and sales >= threshold)
+            if sales_active.get(cvm, False) and sales >= sales_threshold:
+                result = sales_freq.get(cvm, base)
+                category = f"{cvm}-Sales"
 
-        bc = block_centroids.copy()
-        block_all = pc.groupby("Block_APO").agg(
-            total_pharma=("EAN","count"),
-            visited_count=("CVM_clean", lambda x: x.isin(visited_cvms).sum()),
-            total_visits=("new_visits","sum"),
-            total_sales=("FY2025","sum"),
-        ).reset_index()
+            # Top Priority override (highest priority, if active)
+            if is_tp and tp_active.get(cvm, False):
+                result = tp_freq.get(cvm, base)
+                category = f"{cvm}-TP"
 
-        block_info = bc.merge(block_all, on="Block_APO", how="left")
-        block_info["activated_obs"] = block_info["Block_APO"].map(act_obs_per_block).fillna(0).astype(int)
-        block_info["new_visited"] = block_info["visited_count"] + block_info["activated_obs"]
-        # Base visits = CVM visits only (no Observe), for block assignment
-        pc_no_obs = pc[pc["CVM_clean"] != "Observe"]
-        block_base = pc_no_obs.groupby("Block_APO")["new_visits"].sum().to_dict()
-        block_info["base_visits"] = block_info["Block_APO"].map(block_base).fillna(0)
+            return result, category
 
-        # Block language from original territory
-        orig_terr_map = dict(zip(block_df_original["Block_APO"], block_df_original["territory"]))
-        block_info["orig_territory"] = block_info["Block_APO"].map(orig_terr_map)
-        block_info["language"] = block_info["orig_territory"].map(TERRITORY_LANGUAGE).fillna("Unknown")
+        _freq_pharma[["_to_be_visits", "_category"]] = _freq_pharma.apply(calc_to_be_visits, axis=1, result_type="expand")
 
-        # Distance from each rep home to each block
-        all_reps_homes = dict(REP_HOME)
-        for rn, h in all_reps_homes.items():
-            block_info[f"dist_{rn}"] = block_info.apply(
-                lambda r: round(haversine_km(h["lat"],h["lng"],r["lat"],r["lng"]),1) if pd.notna(r["lat"]) else 999, axis=1)
+        # Aggregate per territory per CVM - ALL pharmacies in their CVM row
+        td = {}
+        for t in freq_territories:
+            t_ph = _freq_pharma[_freq_pharma["_territory"] == t]
+            aiv = baseline_visits.get(t, 0)
+            t_pharma_count = baseline_pharma.get(t, 0)
+            t_visited_count = baseline_visited.get(t, 0)
+            rep_name = TERRITORY_TO_REP.get(t, t)
+            rep_cap = REP_CAPACITY.get(rep_name, {"capacity": 1435})["capacity"]
 
-        rep_lang = dict(REP_LANGUAGE)
-        rep_lang["NewRep"] = wi_new_lang
-
-        def find_optimal_location(blocks_subset, weight_col):
-            if len(blocks_subset) == 0:
-                return 46.8, 8.2
-            weights = blocks_subset[weight_col].clip(lower=1)
-            return (np.average(blocks_subset["lat"], weights=weights),
-                    np.average(blocks_subset["lng"], weights=weights))
-
-        rep_caps_local = {r: REP_CAPACITY[r]["capacity"] for r in REP_HOME}
-        rep_caps_local["NewRep"] = wi_max_visits
-
-        def run_scenario(name, new_rep_lat, new_rep_lng):
-            bi = block_info.copy()
-            bi["dist_NewRep"] = bi.apply(
-                lambda r: round(haversine_km(new_rep_lat, new_rep_lng, r["lat"], r["lng"]),1) if pd.notna(r["lat"]) else 999, axis=1)
-
-            all_rep_names = list(REP_HOME.keys()) + ["NewRep"]
-            rep_caps = {r: REP_CAPACITY[r]["capacity"] for r in REP_HOME}
-            rep_caps["NewRep"] = wi_max_visits
-            obs_freq_local = wi_freq.get("Observe", 4)
-            obs_reserve_per_rep = (needed_new_visited * obs_freq_local) / max(len(all_rep_names), 1)
-            rep_caps_for_blocks = {r: max(rep_caps[r] - obs_reserve_per_rep, rep_caps[r] * 0.75) for r in all_rep_names}
-            ba = {}
-
-            # STEP A: Assign blocks — NewRep gets its closest blocks first (geographic cluster),
-            # then existing reps divide the remainder by nearest-distance
-            for lang in ["German", "French", "Italian"]:
-                lang_reps = [r for r in all_rep_names if rep_lang.get(r) == lang]
-                lang_bl = bi[bi["language"] == lang].copy()
-                if not lang_reps or len(lang_bl) == 0: continue
-
-                for r in lang_reps:
-                    if f"dist_{r}" not in lang_bl.columns: lang_bl[f"dist_{r}"] = 999
-                rep_used = {r: 0 for r in lang_reps}
-                existing_reps = [r for r in lang_reps if r != "NewRep"]
-
-                # Phase 1: Give NewRep its N nearest blocks (compact geographic territory)
-                if "NewRep" in lang_reps:
-                    nr_sorted = lang_bl.sort_values("dist_NewRep")
-                    for _, row in nr_sorted.iterrows():
-                        bid = row["Block_APO"]; bv = row["base_visits"]
-                        if rep_used["NewRep"] + bv <= rep_caps_for_blocks["NewRep"]:
-                            ba[bid] = "NewRep"; rep_used["NewRep"] += bv
-
-                # Phase 2: Assign remaining blocks to existing reps
-                remaining = lang_bl[~lang_bl["Block_APO"].isin(ba)].copy()
-                if wi_preserve:
-                    # Preservation mode: existing reps keep their CURRENT blocks first
-                    curr_assign = dict(zip(block_df["Block_APO"], block_df["territory"]))
-                    r2t = {TERRITORY_TO_REP.get(t,""): t for t in lang_terrs}
-                    # First pass: assign blocks to their current rep (respecting capacity)
-                    unassigned = []
-                    for _, row in remaining.iterrows():
-                        bid = row["Block_APO"]; bv = row["base_visits"]
-                        curr_terr = curr_assign.get(bid, "")
-                        curr_rep = TERRITORY_TO_REP.get(curr_terr, "")
-                        if curr_rep in existing_reps and rep_used[curr_rep] + bv <= rep_caps_for_blocks[curr_rep]:
-                            ba[bid] = curr_rep; rep_used[curr_rep] += bv
-                        else:
-                            unassigned.append(row)
-                    # Second pass: remaining blocks go to nearest rep with capacity
-                    for row in unassigned:
-                        bid = row["Block_APO"]; bv = row["base_visits"]
-                        pool = existing_reps if existing_reps else lang_reps
-                        dists = {r: row[f"dist_{r}"] for r in pool}
-                        assigned = False
-                        for r in sorted(dists, key=dists.get):
-                            if rep_used[r] + bv <= rep_caps_for_blocks[r]:
-                                ba[bid] = r; rep_used[r] += bv; assigned = True; break
-                        if not assigned:
-                            least = min(pool, key=lambda r: rep_used[r]/rep_caps_for_blocks[r] if rep_caps_for_blocks[r]>0 else 999)
-                            ba[bid] = least; rep_used[least] += bv
+            cd = {}
+            tvc = 0; tvv = 0  # total visited count and visits
+            for cvm in CVM_WITH_OBS:
+                cvm_ph = t_ph[t_ph["CVM_clean"] == cvm]
+                cnt = len(cvm_ph)
+                vis = int(cvm_ph["_to_be_visits"].sum())
+                # TP override delta: compare TP pharmacies' to_be vs base CVM freq
+                tp_ph = cvm_ph[cvm_ph["Top_Priority"] == 1]
+                if tp_active.get(cvm, False):
+                    # TP delta = sum of (to_be - base) for TP pharmacies
+                    tp_base = sum(max(5, freq.get(cvm, 4)) if row["Planned_Visits"] == 5 else (2 if row["Planned_Visits"] == 2 else freq.get(cvm, 4)) for _, row in tp_ph.iterrows())
+                    tp_delta = int(tp_ph["_to_be_visits"].sum()) - tp_base
                 else:
-                    # Free mode: pure distance-based assignment
-                    if existing_reps:
-                        remaining["min_dist_ex"] = remaining[[f"dist_{r}" for r in existing_reps]].min(axis=1)
-                        remaining = remaining.sort_values("min_dist_ex")
-                    for _, row in remaining.iterrows():
-                        bid = row["Block_APO"]; bv = row["base_visits"]
-                        pool = existing_reps if existing_reps else lang_reps
-                        dists = {r: row[f"dist_{r}"] for r in pool}
-                        assigned = False
-                        for r in sorted(dists, key=dists.get):
-                            if rep_used[r] + bv <= rep_caps_for_blocks[r]:
-                                ba[bid] = r; rep_used[r] += bv; assigned = True; break
-                        if not assigned:
-                            least = min(pool, key=lambda r: rep_used[r]/rep_caps_for_blocks[r] if rep_caps_for_blocks[r]>0 else 999)
-                            ba[bid] = least; rep_used[least] += bv
+                    tp_delta = 0
+                # Sales override delta: non-TP pharmacies with sales >= threshold
+                if sales_active.get(cvm, False):
+                    sales_ph = cvm_ph[(cvm_ph["FY2025"] >= sales_threshold) & (cvm_ph["Top_Priority"] != 1)]
+                    sales_base = sum(max(5, freq.get(cvm, 4)) if row["Planned_Visits"] == 5 else (2 if row["Planned_Visits"] == 2 else freq.get(cvm, 4)) for _, row in sales_ph.iterrows())
+                    sales_delta = int(sales_ph["_to_be_visits"].sum()) - sales_base
+                else:
+                    sales_delta = 0
 
-                # Balance capacity among existing reps only (preserve NewRep's compact cluster)
-                for _i in range(200):
-                    if not existing_reps: break
-                    pct = {r: rep_used[r]/rep_caps[r] if rep_caps[r]>0 else 0 for r in lang_reps}
-                    over = [r for r in existing_reps if pct[r] > 1.0]
-                    if not over:
-                        spct = sorted(existing_reps, key=lambda r: pct[r])
-                        if not spct: break
-                        lo = spct[0]; hi = spct[-1]
-                        if pct[hi] - pct[lo] < 0.15: break
-                        if pct[lo] >= 0.80: break
-                        over = [hi]
-                    over.sort(key=lambda r: -pct[r]); moved = False
-                    for or_r in over:
-                        obl = lang_bl[lang_bl["Block_APO"].isin([b for b,r in ba.items() if r==or_r])]
-                        obl = obl.sort_values(f"dist_{or_r}", ascending=False)
-                        for _, brow in obl.iterrows():
-                            bid = brow["Block_APO"]; bv = brow["base_visits"]
-                            if bv == 0: continue
-                            # Try existing reps first (preferred — keeps NewRep territory compact)
-                            candidates = [(r, pct[r], brow[f"dist_{r}"]) for r in existing_reps
-                                         if r != or_r and rep_used[r]+bv <= rep_caps_for_blocks[r] and pct[r] < pct[or_r] - 0.05]
-                            if not candidates: continue
-                            candidates.sort(key=lambda x: (x[1], x[2]))
-                            ur_r = candidates[0][0]
-                            ba[bid]=ur_r; rep_used[or_r]-=bv; rep_used[ur_r]+=bv; moved=True; break
-                        if moved: break
-                    if not moved: break
+                cd[cvm] = {"count": cnt, "visits": vis, "tp_delta": tp_delta, "sales_delta": sales_delta}
+                if cvm != "Observe":
+                    tvc += cnt; tvv += vis
+                elif cvm == "Observe":
+                    # Observe pharmacies only count as visited if user set Observe freq > 0 in sliders
+                    # Never inherit activated state from Coverage Optimisation scenarios
+                    obs_freq_set = freq.get("Observe", 0)
+                    obs_visited = len(cvm_ph[cvm_ph["_to_be_visits"] > 0]) if obs_freq_set > 0 else 0
+                    tvc += obs_visited; tvv += (vis if obs_freq_set > 0 else 0)
 
-                # Extra pass: if existing reps still over capacity, let NewRep absorb their
-                # CLOSEST blocks (not farthest) — preserves NewRep geographic compactness
-                if "NewRep" in lang_reps:
-                    for _i in range(50):
+            # 2-visit and 5-visit: informational (subset of CVM rows, not added separately)
+            v2 = t_ph[t_ph["Planned_Visits"] == 2]
+            v5 = t_ph[t_ph["Planned_Visits"] == 5]
+            v2c = len(v2); v2v = int(v2["_to_be_visits"].sum())
+            v5c = len(v5); v5v = int(v5["_to_be_visits"].sum())
+
+            tbv = tvv  # Total = sum of CVM rows (2v/5v already included)
+            # If frequencies not yet applied, To Be must equal As Is exactly
+            if not st.session_state.get("freq_applied", False):
+                tbv = aiv
+                tvc = t_visited_count
+            t_cap_ai = round(aiv / rep_cap * 100, 1) if rep_cap > 0 else 0
+            t_cap_tb = round(tbv / rep_cap * 100, 1) if rep_cap > 0 else 0
+            t_cov_ai = round(t_visited_count / t_pharma_count * 100, 1) if t_pharma_count > 0 else 0
+            t_cov_tb = round(tvc / t_pharma_count * 100, 1) if t_pharma_count > 0 else 0
+
+            td[t] = {"rep": rep_name, "cvm": cd, "tv": {"count": tvc, "visits": tvv},
+                     "v2c": v2c, "v2v": v2v, "v5c": v5c, "v5v": v5v,
+                     "cov_tb_count": tvc,
+                     "ai": aiv, "tb": tbv, "dv": tbv - aiv,
+                     "aivpd": round(aiv / WORKING_DAYS, 1), "tbvpd": round(tbv / WORKING_DAYS, 1),
+                     "dvpd": round((tbv - aiv) / WORKING_DAYS, 1),
+                     "cap_ai": t_cap_ai, "cap_tb": t_cap_tb, "cov_ai": t_cov_ai, "cov_tb": t_cov_tb}
+
+        # Compute total TP and Sales overrides per territory
+        for t in freq_territories:
+            tp_total = sum(td[t]["cvm"][c]["tp_delta"] for c in CVM_WITH_OBS)
+            sales_total = sum(td[t]["cvm"][c]["sales_delta"] for c in CVM_WITH_OBS)
+            td[t]["tpo"] = tp_total
+            td[t]["sales_o"] = sales_total
+
+        # As Is CVM data from baseline - ALL pharmacies in their CVM row
+        _as_is_cvm = {}
+        _as_is_v2 = {}; _as_is_v5 = {}
+        for t in freq_territories:
+            t_ph = _freq_pharma[_freq_pharma["_territory"] == t]
+            _as_is_cvm[t] = {}
+            for cvm in CVM_WITH_OBS:
+                cvm_ph = t_ph[t_ph["CVM_clean"] == cvm]
+                _as_is_cvm[t][cvm] = {"count": len(cvm_ph), "visits": int(cvm_ph["Planned_Visits"].sum())}
+            _as_is_v2[t] = {"count": len(t_ph[t_ph["Planned_Visits"]==2]), "visits": int(t_ph[t_ph["Planned_Visits"]==2]["Planned_Visits"].sum())}
+            _as_is_v5[t] = {"count": len(t_ph[t_ph["Planned_Visits"]==5]), "visits": int(t_ph[t_ph["Planned_Visits"]==5]["Planned_Visits"].sum())}
+
+        total_cap = sum(REP_CAPACITY.get(TERRITORY_TO_REP.get(t,""),{"capacity":0})["capacity"] for t in freq_territories)
+        total_ai_visits = sum(td[t]["ai"] for t in freq_territories)
+        total_tb_visits = sum(td[t]["tb"] for t in freq_territories)
+
+        # Filter by territory
+        freq_filter = st.multiselect("Filter by Sales Rep:", options=["All"] + [TERRITORY_TO_REP.get(t,t).split()[0] + f"|{t}" for t in freq_territories], format_func=lambda x: x.split("|")[0] if "|" in x else x, default=["All"], key="freq_rep_filter")
+        if "All" in freq_filter or not freq_filter:
+            show_territories = freq_territories
+            show_individual = False
+        else:
+            selected_keys = [x.split("|")[1] if "|" in x else x for x in freq_filter]
+            show_territories = [t for t in freq_territories if t in selected_keys]
+            show_individual = True
+
+        show_total = not show_individual
+
+        disp_territories = show_territories if show_individual else []
+        html = f'<div class="freq-table-wrap"><table style="width:100%;border-collapse:collapse;font-size:15px;">'
+        # Header row 1
+        html += f'<tr style="background:{HDR_BG};color:#F7EFE6;"><th rowspan="2" style="padding:8px;text-align:left;min-width:130px;">Visits</th>'
+        for t in disp_territories:
+            tc = get_color(t)
+            html += f'<th colspan="4" style="padding:6px;text-align:center;border-left:2px solid #0a4a1a;">{TERRITORY_TO_REP.get(t,t).split()[0]}</th>'
+        if show_total:
+            html += f'<th colspan="4" style="padding:6px;text-align:center;border-left:2px solid #0a4a1a;">TOTAL</th>'
+        html += '</tr>'
+        # Header row 2
+        html += f'<tr style="background:{HDR_BG};color:#F7EFE6;">'
+        for _ in range(len(disp_territories) + (1 if show_total else 0)):
+            html += '<th style="padding:3px;text-align:center;border-left:2px solid #0a4a1a;font-size:14px;width:90px;max-width:90px;"># Pharm.</th>'
+            html += '<th style="padding:3px;text-align:center;font-size:14px;">As Is</th>'
+            html += f'<th style="padding:3px;text-align:center;font-size:14px;background:{HDR_BG};color:#F7EFE6;">To Be</th>'
+            html += '<th style="padding:3px;text-align:center;font-size:14px;">Change</th>'
+        html += '</tr>'
+
+        def mk_cells(data_list, bold=False, total_override=None):
+            """Generate cells for territories + total. data_list = [(ph, ai, tb), ...]"""
+            cells = ""
+            s = "font-weight:bold;" if bold else ""
+            tot_ph=0;tot_ai=0;tot_tb=0
+            for ph,ai,tb in data_list:
+                ch=tb-ai; tot_ph+=ph;tot_ai+=ai;tot_tb+=tb
+                cs=dc(ch) if ch!=0 else ""
+                cells+=f'<td style="padding:3px;text-align:center;border-left:2px solid #eee;width:90px;max-width:90px;{s}">{ph}</td>'
+                cells+=f'<td style="padding:3px;text-align:center;{s}">{ai:,}</td>'
+                cells+=f'<td style="padding:3px;text-align:center;background:#F0E5D8;{s}">{tb:,}</td>'
+                cells+=f'<td style="padding:3px;text-align:center;{cs}">{ch:+,}</td>'
+            if show_total:
+                # Use total_override if provided (covers all territories, not just displayed)
+                if total_override:
+                    tot_ph=sum(d[0] for d in total_override);tot_ai=sum(d[1] for d in total_override);tot_tb=sum(d[2] for d in total_override)
+                tch=tot_tb-tot_ai;cs=dc(tch) if tch!=0 else ""
+                cells+=f'<td style="padding:3px;text-align:center;border-left:2px solid #eee;width:90px;max-width:90px;font-weight:bold;">{tot_ph}</td>'
+                cells+=f'<td style="padding:3px;text-align:center;font-weight:bold;">{tot_ai:,}</td>'
+                cells+=f'<td style="padding:3px;text-align:center;background:#F0E5D8;font-weight:bold;">{tot_tb:,}</td>'
+                cells+=f'<td style="padding:3px;text-align:center;font-weight:bold;{cs}">{tch:+,}</td>'
+            return cells
+
+        # CVM rows
+        for cvm in CVM_WITH_OBS:
+            data = [(_as_is_cvm[t][cvm]["count"], _as_is_cvm[t][cvm]["visits"], td[t]["cvm"][cvm]["visits"]) for t in disp_territories]
+            # For total column, use all show_territories
+            total_data = [(_as_is_cvm[t][cvm]["count"], _as_is_cvm[t][cvm]["visits"], td[t]["cvm"][cvm]["visits"]) for t in show_territories]
+            html += f'<tr style="border-bottom:1px solid #eee;"><td style="padding:4px;font-weight:bold;">{cvm}</td>{mk_cells(data, total_override=total_data)}</tr>'
+
+        # Informational subsets — hidden from table view
+
+        # Total
+        data_total = [(baseline_pharma.get(t,0), td[t]["ai"], td[t]["tb"]) for t in disp_territories]
+        total_all = [(baseline_pharma.get(t,0), td[t]["ai"], td[t]["tb"]) for t in show_territories]
+        html += f'<tr style="border-bottom:1px solid #eee;background:#F0E5D8;"><td style="padding:4px;font-weight:bold;">Total</td>{mk_cells(data_total, bold=True, total_override=total_all)}</tr>'
+
+        # TP override and Sales-based — only shown when advanced options active
+        if show_adv_freq:
+            for label, key in [("Top Priority", "tpo"), ("Sales-based", "sales_o")]:
+                html += f'<tr style="border-bottom:1px solid #eee;"><td style="padding:4px;font-weight:bold;">{label}</td>'
+                tot_ch = 0
+                for t in disp_territories:
+                    ch = td[t][key]; tot_ch += ch; cs = dc(ch) if ch!=0 else ""
+                    html += f'<td style="padding:3px;text-align:center;border-left:2px solid #eee;" colspan="3"></td>'
+                    html += f'<td style="padding:3px;text-align:center;{cs}">{ch:+,}</td>'
+                # Add non-displayed territories to total
+                for t in show_territories:
+                    if t not in disp_territories: tot_ch += td[t][key]
+                if show_total:
+                    cs = dc(tot_ch) if tot_ch!=0 else ""
+                    html += f'<td style="padding:3px;text-align:center;border-left:2px solid #eee;" colspan="3"></td>'
+                    html += f'<td style="padding:3px;text-align:center;font-weight:bold;{cs}">{tot_ch:+,}</td>'
+                html += '</tr>'
+
+        # Separator
+        html += f'<tr><td colspan="100" style="border-bottom:2px solid {HDR_BG};"></td></tr>'
+
+        # Coverage, Capacity, Visits/Day
+        for metric_label, ai_key, tb_key, ai_num_fn, ai_den_fn in [
+            ("Coverage", "cov_ai", "cov_tb", lambda t: baseline_visited.get(t,0), lambda t: baseline_pharma.get(t,0)),
+            ("Capacity", "cap_ai", "cap_tb", lambda t: td[t]["ai"], lambda t: REP_CAPACITY.get(TERRITORY_TO_REP.get(t,""),{"capacity":1435})["capacity"]),
+        ]:
+            html += f'<tr style="border-bottom:1px solid #eee;"><td style="padding:4px;font-weight:bold;">{metric_label}</td>'
+            tot_ai_n=0;tot_ai_d=0;tot_tb_n=0;tot_tb_d=0
+            for t in disp_territories:
+                ai_p=td[t][ai_key]; tb_p=td[t][tb_key]; ch=round(tb_p-ai_p,1); cs=dc(ch) if ch!=0 else ""
+                tot_ai_n+=ai_num_fn(t);tot_ai_d+=ai_den_fn(t)
+                if tb_key=="cov_tb": tot_tb_n+=td[t]["cov_tb_count"]; tot_tb_d+=baseline_pharma.get(t,0)
+                else: tot_tb_n+=td[t]["tb"]; tot_tb_d+=ai_den_fn(t)
+                html+=f'<td style="padding:3px;text-align:center;border-left:2px solid #eee;" colspan="2">{ai_p}%</td>'
+                html+=f'<td style="padding:3px;text-align:center;background:#F0E5D8;">{tb_p}%</td>'
+                html+=f'<td style="padding:3px;text-align:center;{cs}">{ch:+.1f}%</td>'
+            for t in show_territories:
+                if t not in disp_territories:
+                    tot_ai_n+=ai_num_fn(t);tot_ai_d+=ai_den_fn(t)
+                    if tb_key=="cov_tb": tot_tb_n+=td[t]["cov_tb_count"]; tot_tb_d+=baseline_pharma.get(t,0)
+                    else: tot_tb_n+=td[t]["tb"]; tot_tb_d+=ai_den_fn(t)
+            if show_total:
+                tot_ai=round(tot_ai_n/tot_ai_d*100,1) if tot_ai_d>0 else 0
+                tot_tb=round(tot_tb_n/tot_tb_d*100,1) if tot_tb_d>0 else 0
+                tch=round(tot_tb-tot_ai,1);cs=dc(tch) if tch!=0 else ""
+                html+=f'<td style="padding:3px;text-align:center;border-left:2px solid #eee;font-weight:bold;" colspan="2">{tot_ai}%</td>'
+                html+=f'<td style="padding:3px;text-align:center;background:#F0E5D8;font-weight:bold;">{tot_tb}%</td>'
+                html+=f'<td style="padding:3px;text-align:center;font-weight:bold;{cs}">{tch:+.1f}%</td>'
+            html += '</tr>'
+
+        # Visits/Day
+        html += f'<tr style="border-bottom:1px solid #eee;"><td style="padding:4px;font-weight:bold;">Visits/Day</td>'
+        tot_ai_vpd=0;tot_tb_vpd=0
+        for t in disp_territories:
+            ch=td[t]["dvpd"];cs=dc(ch) if ch!=0 else ""
+            tot_ai_vpd+=td[t]["aivpd"];tot_tb_vpd+=td[t]["tbvpd"]
+            html+=f'<td style="padding:3px;text-align:center;border-left:2px solid #eee;" colspan="2">{td[t]["aivpd"]}</td>'
+            html+=f'<td style="padding:3px;text-align:center;background:#F0E5D8;">{td[t]["tbvpd"]}</td>'
+            html+=f'<td style="padding:3px;text-align:center;{cs}">{ch:+.1f}</td>'
+        for t in show_territories:
+            if t not in disp_territories: tot_ai_vpd+=td[t]["aivpd"]; tot_tb_vpd+=td[t]["tbvpd"]
+        if show_total:
+            tch=round(tot_tb_vpd-tot_ai_vpd,1)
+            if abs(tch) < 0.15: tch = 0.0  # suppress rounding noise
+            cs=dc(tch) if tch!=0 else ""
+            html+=f'<td style="padding:3px;text-align:center;border-left:2px solid #eee;font-weight:bold;" colspan="2">{round(tot_ai_vpd,1)}</td>'
+            html+=f'<td style="padding:3px;text-align:center;background:#F0E5D8;font-weight:bold;">{round(tot_tb_vpd,1)}</td>'
+            html+=f'<td style="padding:3px;text-align:center;font-weight:bold;{cs}">{tch:+.1f}</td>'
+        html += '</tr>'
+
+        html += '</table></div>'
+        st.markdown(html, unsafe_allow_html=True)
+
+
+st.divider()
+
+_sec_coverage = st.session_state.get("sec_coverage", False)
+_arr_coverage = "▼" if _sec_coverage else "▶"
+_dc_coverage = "#263F26" if _sec_coverage else "#6D7F6E"
+st.markdown(f'<div style="background:{_dc_coverage};border-radius:10px;padding:10px 16px;margin:4px 0 4px 0;width:fit-content;max-width:100%;font-size:13px;color:#F7EFE6;line-height:1.6;">Redistribute blocks to increase coverage while keeping capacity balanced.</div>', unsafe_allow_html=True)
+if st.button(f"{_arr_coverage}  Coverage Optimisation.", key="_btn_sec_coverage"):
+    st.session_state["sec_coverage"] = not _sec_coverage; st.rerun()
+if _sec_coverage:
+    wi1,wi2=st.columns([1,2])
+    with wi1:
+        total_pharma = len(pharma_current)
+        total_visited = pharma_current[pharma_current["CVM_clean"].isin(visited_cvms)].shape[0]
+        current_cov = round(total_visited/total_pharma*100,1) if total_pharma>0 else 0
+        st.markdown(f"**Current coverage: {current_cov}%** ({total_visited}/{total_pharma})")
+        _wc1, _wc2 = st.columns([1,1])
+        with _wc1: wi_target = st.number_input("Target coverage %:",min_value=50.0,max_value=100.0,value=85.0,step=1.0,key="wi_tgt")
+        _no_new_rep_early = st.session_state.get("wi_no_new_rep", False)
+        if not _no_new_rep_early:
+            with _wc1: wi_vpd = st.number_input("New Rep Visits/Day:",min_value=1.0,max_value=15.0,value=7.0,step=0.5,key="wi_vpd")
+            wi_max_visits = int(wi_vpd * WORKING_DAYS)
+            st.markdown(f"Max visits/year: **{wi_max_visits}**")
+        else:
+            wi_vpd = 7.0
+            wi_max_visits = int(wi_vpd * WORKING_DAYS)
+        st.markdown("**Visit frequency:**")
+        show_adv_wi = st.toggle("Activate other Visit Frequency Options", value=False, key="show_adv_wi")
+        if show_adv_wi:
+            wi_sales_threshold = st.number_input("Sales threshold (≥):", min_value=0, max_value=500000, value=10000, step=1000, key="wi_sales_thresh")
+        else:
+            wi_sales_threshold = st.session_state.get("wi_sales_thresh", 10000)
+        if show_adv_wi:
+            st.markdown('<div style="background:#CED5CE;border-radius:8px;padding:10px 14px;margin:8px 0 10px 0;font-size:13px;color:#042B0B;line-height:1.7;">To change visit frequency for TP or Sales-based, click the checkboxes next to them.<br><b>TP Freq.:</b> visit frequency of Top Priority Pharmacies — Pharmacies that generated 50% of Net Sales in 2025.<br><b>Sales Freq.:</b> visit frequency depending on Net Sales 2025 (threshold set above).</div>', unsafe_allow_html=True)
+            st.markdown('<div style="display:grid;grid-template-columns:2.0fr 1.8fr 0.3fr 1.8fr 0.3fr 1.8fr;gap:4px;font-size:14px;font-weight:bold;padding:4px 0;"><span style="font-weight:700;">CVM</span><span style="font-weight:700;">Freq.</span><span></span><span style="font-weight:700;">TP Freq.</span><span></span><span style="font-weight:700;">Sales Freq.</span></div>', unsafe_allow_html=True)
+        else:
+            st.markdown('<div style="display:grid;grid-template-columns:2.0fr 1.8fr;gap:4px;font-size:14px;font-weight:bold;padding:4px 0;"><span style="font-weight:700;">CVM</span><span style="font-weight:700;">Freq.</span></div>', unsafe_allow_html=True)
+        wi_freq = {}; wi_tp_freq = {}; wi_tp_active = {}; wi_sales_freq = {}; wi_sales_active = {}
+        for cvm in CVM_CATEGORIES:
+            if show_adv_wi:
+                cols = st.columns([2.0, 1.8, 0.3, 1.8, 0.3, 1.8])
+                with cols[0]: st.markdown(f"**{cvm}**")
+                with cols[1]: wi_freq[cvm] = st.number_input(f"WI {cvm}",min_value=0,max_value=52,value=4,step=1,key=f"wi_freq_{cvm}",label_visibility="collapsed")
+                with cols[2]: wi_tp_active[cvm] = st.checkbox("TP",key=f"wi_tp_on_{cvm}",label_visibility="collapsed")
+                with cols[3]:
+                    if wi_tp_active.get(cvm, False):
+                        wi_tp_freq[cvm] = st.number_input(f"WI TP {cvm}",min_value=0,max_value=52,value=wi_freq[cvm],step=1,key=f"wi_tp_{cvm}",label_visibility="collapsed")
+                    else:
+                        wi_tp_freq[cvm] = wi_freq[cvm]
+                with cols[4]: wi_sales_active[cvm] = st.checkbox("Sales",key=f"wi_sales_on_{cvm}",label_visibility="collapsed")
+                with cols[5]:
+                    if wi_sales_active.get(cvm, False):
+                        wi_sales_freq[cvm] = st.number_input(f"WI S {cvm}",min_value=0,max_value=52,value=wi_freq[cvm],step=1,key=f"wi_sales_freq_{cvm}",label_visibility="collapsed")
+                    else:
+                        wi_sales_freq[cvm] = wi_freq[cvm]
+            else:
+                cols = st.columns([2.0, 1.8])
+                with cols[0]: st.markdown(f"**{cvm}**")
+                with cols[1]: wi_freq[cvm] = st.number_input(f"WI {cvm}",min_value=0,max_value=52,value=4,step=1,key=f"wi_freq_{cvm}",label_visibility="collapsed")
+                wi_tp_active[cvm] = False; wi_tp_freq[cvm] = wi_freq[cvm]
+                wi_sales_active[cvm] = False; wi_sales_freq[cvm] = wi_freq[cvm]
+        if show_adv_wi:
+            obs_cols = st.columns([2.0, 1.8, 0.3, 1.8, 0.3, 1.8])
+            with obs_cols[0]: st.markdown("**Current Observe**")
+            with obs_cols[1]: wi_freq["Observe"] = st.number_input("WI Observe",min_value=0,max_value=52,value=4,step=1,key="wi_freq_Observe",label_visibility="collapsed")
+            with obs_cols[2]: wi_tp_active["Observe"] = st.checkbox("TP",key="wi_tp_on_Observe",label_visibility="collapsed")
+            with obs_cols[3]:
+                if wi_tp_active.get("Observe", False):
+                    wi_tp_freq["Observe"] = st.number_input("WI TP Observe",min_value=0,max_value=52,value=wi_freq["Observe"],step=1,key="wi_tp_Observe",label_visibility="collapsed")
+                else:
+                    wi_tp_freq["Observe"] = wi_freq["Observe"]
+            with obs_cols[4]: wi_sales_active["Observe"] = st.checkbox("Sales",key="wi_sales_on_Observe",label_visibility="collapsed")
+            with obs_cols[5]:
+                if wi_sales_active.get("Observe", False):
+                    wi_sales_freq["Observe"] = st.number_input("WI S Observe",min_value=0,max_value=52,value=wi_freq["Observe"],step=1,key="wi_sales_freq_Observe",label_visibility="collapsed")
+                else:
+                    wi_sales_freq["Observe"] = wi_freq["Observe"]
+        else:
+            obs_cols = st.columns([2.0, 1.8])
+            with obs_cols[0]: st.markdown("**Current Observe**")
+            with obs_cols[1]: wi_freq["Observe"] = st.number_input("WI Observe",min_value=0,max_value=52,value=4,step=1,key="wi_freq_Observe",label_visibility="collapsed")
+            wi_tp_active["Observe"] = False; wi_tp_freq["Observe"] = wi_freq["Observe"]
+            wi_sales_active["Observe"] = False; wi_sales_freq["Observe"] = wi_freq["Observe"]
+        st.markdown('<p style="font-size:13px;color:#6D7F6E;font-style:italic;margin:4px 0;">Current Observe frequency will be applied to selected Observe pharmacies to increase coverage. Non-selected Observe pharmacies get 0 visits.</p>', unsafe_allow_html=True)
+
+        wi_no_new_rep = st.checkbox("Do not add New Rep (optimise with current 6 reps only)", value=False, key="wi_no_new_rep")
+        if not wi_no_new_rep:
+            st.markdown("**New Rep language:**")
+            wi_new_lang = st.selectbox("New Rep language:", options=["German", "French", "Italian"], key="wi_lang", label_visibility="collapsed")
+        else:
+            wi_new_lang = "German"
+            wi_manual_lat = 0.0
+            wi_manual_lng = 0.0
+        wi_preserve = st.checkbox("Preserve existing territory boundaries", value=True,
+            help="When checked, existing reps keep their current blocks unless significantly over capacity. Only blocks near the new Rep are reassigned.")
+        if st.button("Generate Scenarios.", type="primary"):
+            st.session_state["wi_run"] = True
+        if st.button("Reset Scenario."):
+            st.session_state["wi_run"] = False
+            st.session_state["wi_scenarios"] = []
+            st.session_state["wi_loaded_scenario"] = None
+            st.session_state.activated_observe_eans = set()
+            st.session_state.activated_obs_freq = 4
+            st.session_state.loaded_scenario_results = None
+            st.session_state.assignments = dict(zip(block_df_original["Block_APO"], block_df_original["territory"]))
+            st.session_state.custom_territories = {}
+            st.session_state.undo_stack = []
+            st.session_state.selected_blocks_list = []
+            st.rerun()
+
+    # Freq inputs in a narrow column (1/3 page) — matches Visit Frequency Scenario proportions
+    with wi2:
+        if st.session_state.get("wi_run", False):
+            # Step 1: Select Observe pharmacies to activate
+            needed_new_visited = int(np.ceil(wi_target/100*total_pharma)) - total_visited
+            needed_new_visited = max(0, needed_new_visited)
+
+            observe_ranked = pharma_current[pharma_current["CVM_clean"]=="Observe"].sort_values("FY2025", ascending=False)
+            activated_observe = observe_ranked.head(needed_new_visited)
+            activated_blocks = set(activated_observe["Block_APO"].unique())
+
+            # Step 2: Recalculate block visits with user frequencies
+            pc = pharma_current.copy()
+            # Mark activated observe pharmacies
+            activated_eans = set(activated_observe["EAN"].astype(str))
+            def calc_new_visits(row):
+                cvm = row["CVM_clean"]
+                is_tp = row.get("Top_Priority", 0) == 1
+                sales = row.get("FY2025", 0)
+                # 2-visit: always fixed
+                if row["Planned_Visits"] == 2: return 2
+                # 5-visit: use max(5, applicable frequency) — never drops below 5
+                if row["Planned_Visits"] == 5:
+                    base = wi_freq.get(cvm, 5)
+                    result = max(5, base)
+                    if wi_sales_active.get(cvm, False) and sales >= wi_sales_threshold:
+                        result = max(5, wi_sales_freq.get(cvm, base))
+                    if is_tp and wi_tp_active.get(cvm, False):
+                        result = max(5, wi_tp_freq.get(cvm, base))
+                    return result
+                # Observe: only activated ones get visits
+                if cvm == "Observe":
+                    if str(row["EAN"]) in activated_eans:
+                        obs_f = wi_freq.get("Observe", 0) if wi_freq.get("Observe", 0) > 0 else wi_freq.get("Build", 4)
+                        return obs_f
+                    return 0
+                # Regular CVM — priority: TP > Sales > CVM
+                base = wi_freq.get(cvm, 0)
+                result = base
+                if wi_sales_active.get(cvm, False) and sales >= wi_sales_threshold:
+                    result = wi_sales_freq.get(cvm, base)
+                if is_tp and wi_tp_active.get(cvm, False):
+                    result = wi_tp_freq.get(cvm, base)
+                return result
+            pc["new_visits"] = pc.apply(calc_new_visits, axis=1)
+
+            # Activated observe count per block
+            act_obs_per_block = activated_observe.groupby("Block_APO").size().to_dict()
+
+            bc = block_centroids.copy()
+            block_all = pc.groupby("Block_APO").agg(
+                total_pharma=("EAN","count"),
+                visited_count=("CVM_clean", lambda x: x.isin(visited_cvms).sum()),
+                total_visits=("new_visits","sum"),
+                total_sales=("FY2025","sum"),
+            ).reset_index()
+
+            block_info = bc.merge(block_all, on="Block_APO", how="left")
+            block_info["activated_obs"] = block_info["Block_APO"].map(act_obs_per_block).fillna(0).astype(int)
+            block_info["new_visited"] = block_info["visited_count"] + block_info["activated_obs"]
+            # Base visits = CVM visits only (no Observe), for block assignment
+            pc_no_obs = pc[pc["CVM_clean"] != "Observe"]
+            block_base = pc_no_obs.groupby("Block_APO")["new_visits"].sum().to_dict()
+            block_info["base_visits"] = block_info["Block_APO"].map(block_base).fillna(0)
+
+            # Block language from original territory
+            orig_terr_map = dict(zip(block_df_original["Block_APO"], block_df_original["territory"]))
+            block_info["orig_territory"] = block_info["Block_APO"].map(orig_terr_map)
+            block_info["language"] = block_info["orig_territory"].map(TERRITORY_LANGUAGE).fillna("Unknown")
+
+            # Distance from each rep home to each block
+            all_reps_homes = dict(REP_HOME)
+            for rn, h in all_reps_homes.items():
+                block_info[f"dist_{rn}"] = block_info.apply(
+                    lambda r: round(haversine_km(h["lat"],h["lng"],r["lat"],r["lng"]),1) if pd.notna(r["lat"]) else 999, axis=1)
+
+            rep_lang = dict(REP_LANGUAGE)
+            if not wi_no_new_rep:
+                rep_lang["NewRep"] = wi_new_lang
+
+            def find_optimal_location(blocks_subset, weight_col):
+                if len(blocks_subset) == 0:
+                    return 46.8, 8.2
+                weights = blocks_subset[weight_col].clip(lower=1)
+                return (np.average(blocks_subset["lat"], weights=weights),
+                        np.average(blocks_subset["lng"], weights=weights))
+
+            rep_caps_local = {r: REP_CAPACITY[r]["capacity"] for r in REP_HOME}
+            if not wi_no_new_rep:
+                rep_caps_local["NewRep"] = wi_max_visits
+
+            def run_scenario(name, new_rep_lat, new_rep_lng):
+                bi = block_info.copy()
+                if not wi_no_new_rep:
+                    bi["dist_NewRep"] = bi.apply(
+                        lambda r: round(haversine_km(new_rep_lat, new_rep_lng, r["lat"], r["lng"]),1) if pd.notna(r["lat"]) else 999, axis=1)
+
+                all_rep_names = list(REP_HOME.keys()) if wi_no_new_rep else list(REP_HOME.keys()) + ["NewRep"]
+                rep_caps = {r: REP_CAPACITY[r]["capacity"] for r in REP_HOME}
+                if not wi_no_new_rep:
+                    rep_caps["NewRep"] = wi_max_visits
+                obs_freq_local = wi_freq.get("Observe", 4)
+                obs_reserve_per_rep = (needed_new_visited * obs_freq_local) / max(len(all_rep_names), 1)
+                rep_caps_for_blocks = {r: max(rep_caps[r] - obs_reserve_per_rep, rep_caps[r] * 0.75) for r in all_rep_names}
+                ba = {}
+
+                # STEP A: Assign blocks — NewRep gets its closest blocks first (geographic cluster),
+                # then existing reps divide the remainder by nearest-distance
+                for lang in ["German", "French", "Italian"]:
+                    lang_reps = [r for r in all_rep_names if rep_lang.get(r) == lang]
+                    lang_bl = bi[bi["language"] == lang].copy()
+                    if not lang_reps or len(lang_bl) == 0: continue
+
+                    for r in lang_reps:
+                        if f"dist_{r}" not in lang_bl.columns: lang_bl[f"dist_{r}"] = 999
+                    rep_used = {r: 0 for r in lang_reps}
+                    existing_reps = [r for r in lang_reps if r != "NewRep"]
+
+                    # Phase 1: Give NewRep its N nearest blocks (compact geographic territory)
+                    if "NewRep" in lang_reps:
+                        nr_sorted = lang_bl.sort_values("dist_NewRep")
+                        for _, row in nr_sorted.iterrows():
+                            bid = row["Block_APO"]; bv = row["base_visits"]
+                            if rep_used["NewRep"] + bv <= rep_caps_for_blocks["NewRep"]:
+                                ba[bid] = "NewRep"; rep_used["NewRep"] += bv
+
+                    # Phase 2: Assign remaining blocks to existing reps
+                    remaining = lang_bl[~lang_bl["Block_APO"].isin(ba)].copy()
+                    if wi_preserve:
+                        # Preservation mode: existing reps keep their CURRENT blocks first
+                        curr_assign = dict(zip(block_df["Block_APO"], block_df["territory"]))
+                        lang_terrs_local = LANGUAGE_TERRITORIES.get(lang, [])
+                        r2t = {TERRITORY_TO_REP.get(t,""): t for t in lang_terrs_local}
+                        # First pass: assign blocks to their current rep (respecting capacity)
+                        unassigned = []
+                        for _, row in remaining.iterrows():
+                            bid = row["Block_APO"]; bv = row["base_visits"]
+                            curr_terr = curr_assign.get(bid, "")
+                            curr_rep = TERRITORY_TO_REP.get(curr_terr, "")
+                            if curr_rep in existing_reps and rep_used[curr_rep] + bv <= rep_caps_for_blocks[curr_rep]:
+                                ba[bid] = curr_rep; rep_used[curr_rep] += bv
+                            else:
+                                unassigned.append(row)
+                        # Second pass: remaining blocks go to nearest rep with capacity
+                        for row in unassigned:
+                            bid = row["Block_APO"]; bv = row["base_visits"]
+                            pool = existing_reps if existing_reps else lang_reps
+                            dists = {r: row[f"dist_{r}"] for r in pool}
+                            assigned = False
+                            for r in sorted(dists, key=dists.get):
+                                if rep_used[r] + bv <= rep_caps_for_blocks[r]:
+                                    ba[bid] = r; rep_used[r] += bv; assigned = True; break
+                            if not assigned:
+                                least = min(pool, key=lambda r: rep_used[r]/rep_caps_for_blocks[r] if rep_caps_for_blocks[r]>0 else 999)
+                                ba[bid] = least; rep_used[least] += bv
+                    else:
+                        # Free mode: pure distance-based assignment
+                        if existing_reps:
+                            remaining["min_dist_ex"] = remaining[[f"dist_{r}" for r in existing_reps]].min(axis=1)
+                            remaining = remaining.sort_values("min_dist_ex")
+                        for _, row in remaining.iterrows():
+                            bid = row["Block_APO"]; bv = row["base_visits"]
+                            pool = existing_reps if existing_reps else lang_reps
+                            dists = {r: row[f"dist_{r}"] for r in pool}
+                            assigned = False
+                            for r in sorted(dists, key=dists.get):
+                                if rep_used[r] + bv <= rep_caps_for_blocks[r]:
+                                    ba[bid] = r; rep_used[r] += bv; assigned = True; break
+                            if not assigned:
+                                least = min(pool, key=lambda r: rep_used[r]/rep_caps_for_blocks[r] if rep_caps_for_blocks[r]>0 else 999)
+                                ba[bid] = least; rep_used[least] += bv
+
+                    # Balance capacity among existing reps only (preserve NewRep's compact cluster)
+                    for _i in range(200):
+                        if not existing_reps: break
                         pct = {r: rep_used[r]/rep_caps[r] if rep_caps[r]>0 else 0 for r in lang_reps}
-                        still_over = [r for r in existing_reps if pct[r] > 1.0]
-                        if not still_over: break
-                        nr_cap_left = rep_caps_for_blocks["NewRep"] - rep_used["NewRep"]
-                        if nr_cap_left <= 0: break
-                        moved2 = False
-                        for or_r in sorted(still_over, key=lambda r: -pct[r]):
-                            # Sort by distance to NewRep ASCENDING — give NewRep the closest blocks
-                            obl2 = lang_bl[lang_bl["Block_APO"].isin([b for b,r in ba.items() if r==or_r])]
-                            obl2 = obl2.sort_values("dist_NewRep", ascending=True)
-                            for _, brow in obl2.iterrows():
+                        over = [r for r in existing_reps if pct[r] > 1.0]
+                        if not over:
+                            spct = sorted(existing_reps, key=lambda r: pct[r])
+                            if not spct: break
+                            lo = spct[0]; hi = spct[-1]
+                            if pct[hi] - pct[lo] < 0.15: break
+                            if pct[lo] >= 0.80: break
+                            over = [hi]
+                        over.sort(key=lambda r: -pct[r]); moved = False
+                        for or_r in over:
+                            obl = lang_bl[lang_bl["Block_APO"].isin([b for b,r in ba.items() if r==or_r])]
+                            obl = obl.sort_values(f"dist_{or_r}", ascending=False)
+                            for _, brow in obl.iterrows():
                                 bid = brow["Block_APO"]; bv = brow["base_visits"]
-                                if bv == 0 or bv > nr_cap_left: continue
-                                ba[bid]="NewRep"; rep_used[or_r]-=bv; rep_used["NewRep"]+=bv
-                                nr_cap_left -= bv; moved2=True; break
-                            if moved2: break
-                        if not moved2: break
+                                if bv == 0: continue
+                                # Try existing reps first (preferred — keeps NewRep territory compact)
+                                candidates = [(r, pct[r], brow[f"dist_{r}"]) for r in existing_reps
+                                             if r != or_r and rep_used[r]+bv <= rep_caps_for_blocks[r] and pct[r] < pct[or_r] - 0.05]
+                                if not candidates: continue
+                                candidates.sort(key=lambda x: (x[1], x[2]))
+                                ur_r = candidates[0][0]
+                                ba[bid]=ur_r; rep_used[or_r]-=bv; rep_used[ur_r]+=bv; moved=True; break
+                            if moved: break
+                        if not moved: break
 
-                # Fine-tune geography among existing reps only
-                for _i in range(50):
-                    imp = False
-                    for bid1, r1 in list(ba.items()):
-                        if r1 not in existing_reps: continue
-                        br1 = lang_bl[lang_bl["Block_APO"]==bid1]
-                        if len(br1)==0: continue
-                        br1 = br1.iloc[0]
-                        for r2 in existing_reps:
-                            if r2==r1: continue
-                            if br1[f"dist_{r2}"] < br1[f"dist_{r1}"]*0.7:
-                                bv = br1["base_visits"]
-                                if (rep_used[r2]+bv <= rep_caps_for_blocks[r2] and
-                                    rep_used[r1]-bv >= rep_caps_for_blocks[r1]*0.85):
-                                    ba[bid1]=r2; rep_used[r1]-=bv; rep_used[r2]+=bv; imp=True; break
-                        if imp: break
-                    if not imp: break
+                    # Extra pass: if existing reps still over capacity, let NewRep absorb their
+                    # CLOSEST blocks (not farthest) — preserves NewRep geographic compactness
+                    if "NewRep" in lang_reps:
+                        for _i in range(50):
+                            pct = {r: rep_used[r]/rep_caps[r] if rep_caps[r]>0 else 0 for r in lang_reps}
+                            still_over = [r for r in existing_reps if pct[r] > 1.0]
+                            if not still_over: break
+                            nr_cap_left = rep_caps_for_blocks["NewRep"] - rep_used["NewRep"]
+                            if nr_cap_left <= 0: break
+                            moved2 = False
+                            for or_r in sorted(still_over, key=lambda r: -pct[r]):
+                                # Sort by distance to NewRep ASCENDING — give NewRep the closest blocks
+                                obl2 = lang_bl[lang_bl["Block_APO"].isin([b for b,r in ba.items() if r==or_r])]
+                                obl2 = obl2.sort_values("dist_NewRep", ascending=True)
+                                for _, brow in obl2.iterrows():
+                                    bid = brow["Block_APO"]; bv = brow["base_visits"]
+                                    if bv == 0 or bv > nr_cap_left: continue
+                                    ba[bid]="NewRep"; rep_used[or_r]-=bv; rep_used["NewRep"]+=bv
+                                    nr_cap_left -= bv; moved2=True; break
+                                if moved2: break
+                            if not moved2: break
 
-            # STEP B: Activate Observe pharmacies within remaining capacity (capped at target)
-            bi["new_rep"] = bi["Block_APO"].map(ba)
-            rep_base = {}
-            for rn in all_rep_names:
-                rep_base[rn] = int(bi[bi["new_rep"]==rn]["base_visits"].sum())
+                    # Fine-tune geography among existing reps only
+                    for _i in range(50):
+                        imp = False
+                        for bid1, r1 in list(ba.items()):
+                            if r1 not in existing_reps: continue
+                            br1 = lang_bl[lang_bl["Block_APO"]==bid1]
+                            if len(br1)==0: continue
+                            br1 = br1.iloc[0]
+                            for r2 in existing_reps:
+                                if r2==r1: continue
+                                if br1[f"dist_{r2}"] < br1[f"dist_{r1}"]*0.7:
+                                    bv = br1["base_visits"]
+                                    if (rep_used[r2]+bv <= rep_caps_for_blocks[r2] and
+                                        rep_used[r1]-bv >= rep_caps_for_blocks[r1]*0.85):
+                                        ba[bid1]=r2; rep_used[r1]-=bv; rep_used[r2]+=bv; imp=True; break
+                            if imp: break
+                        if not imp: break
 
-            target_new = int(np.ceil(wi_target/100*total_pharma)) - total_visited
-            target_new = max(0, target_new)
-            total_act = 0; rep_act = {r:0 for r in all_rep_names}; blk_act = {}
-            obs_freq = wi_freq.get("Observe", 4)
-            if obs_freq > 0:
-                all_obs_list = []
+                # STEP B: Activate Observe pharmacies within remaining capacity (capped at target)
+                bi["new_rep"] = bi["Block_APO"].map(ba)
+                rep_base = {}
                 for rn in all_rep_names:
-                    rep_bl = bi[bi["new_rep"]==rn]
-                    r_obs = pharma_current[
-                        (pharma_current["Block_APO"].isin(rep_bl["Block_APO"])) &
-                        (pharma_current["CVM_clean"]=="Observe")
-                    ].copy()
-                    r_obs["_rep"] = rn
-                    all_obs_list.append(r_obs)
-                if all_obs_list:
-                    all_obs_df = pd.concat(all_obs_list).sort_values("FY2025", ascending=False)
-                    for _, orow in all_obs_df.iterrows():
-                        if total_act >= target_new: break
-                        rn = orow["_rep"]
-                        total_act += 1; rep_act[rn] += 1
-                        blk_act[orow["Block_APO"]] = blk_act.get(orow["Block_APO"],0)+1
+                    rep_base[rn] = int(bi[bi["new_rep"]==rn]["base_visits"].sum())
 
-            bi["final_activated"] = bi["Block_APO"].map(blk_act).fillna(0).astype(int)
-            new_cov = round((total_visited + total_act)/total_pharma*100, 1)
+                target_new = int(np.ceil(wi_target/100*total_pharma)) - total_visited
+                target_new = max(0, target_new)
+                total_act = 0; rep_act = {r:0 for r in all_rep_names}; blk_act = {}
+                obs_freq = wi_freq.get("Observe", 4)
+                if obs_freq > 0:
+                    all_obs_list = []
+                    for rn in all_rep_names:
+                        rep_bl = bi[bi["new_rep"]==rn]
+                        r_obs = pharma_current[
+                            (pharma_current["Block_APO"].isin(rep_bl["Block_APO"])) &
+                            (pharma_current["CVM_clean"]=="Observe")
+                        ].copy()
+                        r_obs["_rep"] = rn
+                        all_obs_list.append(r_obs)
+                    if all_obs_list:
+                        all_obs_df = pd.concat(all_obs_list).sort_values("FY2025", ascending=False)
+                        for _, orow in all_obs_df.iterrows():
+                            if total_act >= target_new: break
+                            rn = orow["_rep"]
+                            total_act += 1; rep_act[rn] += 1
+                            blk_act[orow["Block_APO"]] = blk_act.get(orow["Block_APO"],0)+1
 
-            results = {}
-            for rn in all_rep_names:
-                rb = bi[bi["new_rep"]==rn]; cap=rep_caps[rn]
-                bv=rep_base[rn]; ao=rep_act[rn]; tv=bv+ao*obs_freq
-                dc_col = f"dist_{rn}" if rn!="NewRep" else "dist_NewRep"
-                nv=int(rb["visited_count"].sum())+ao; np2=int(rb["total_pharma"].sum())
-                results[rn] = {
-                    "blocks":len(rb),"pharmacies":np2,"visited":nv,"activated_obs":ao,
-                    "coverage":round(nv/np2*100,1) if np2>0 else 0,
-                    "visits":tv,"capacity":cap,
-                    "cap_pct":round(tv/cap*100,1) if cap>0 else 0,
-                    "vpd":round(tv/WORKING_DAYS,1),
-                    "sales":round(rb["total_sales"].sum(),0),
-                    "avg_dist":round(rb[dc_col].mean(),1) if len(rb)>0 else 0,
-                    "max_dist":round(rb[dc_col].max(),1) if len(rb)>0 else 0,
-                }
-            return {"name":name,"new_lat":new_rep_lat,"new_lng":new_rep_lng,
-                    "coverage":new_cov,"assignments":ba,"results":results,
-                    "total_activated":total_act}
+                bi["final_activated"] = bi["Block_APO"].map(blk_act).fillna(0).astype(int)
+                new_cov = round((total_visited + total_act)/total_pharma*100, 1)
 
-        # Generate 4 scenarios with different new rep locations
-        lang_blocks = block_info[block_info["language"] == wi_new_lang]
-        lang_terrs = LANGUAGE_TERRITORIES.get(wi_new_lang, [])
+                results = {}
+                for rn in all_rep_names:
+                    rb = bi[bi["new_rep"]==rn]; cap=rep_caps[rn]
+                    bv=rep_base[rn]; ao=rep_act[rn]; tv=bv+ao*obs_freq
+                    dc_col = f"dist_{rn}" if rn!="NewRep" else "dist_NewRep"
+                    nv=int(rb["visited_count"].sum())+ao; np2=int(rb["total_pharma"].sum())
+                    results[rn] = {
+                        "blocks":len(rb),"pharmacies":np2,"visited":nv,"activated_obs":ao,
+                        "coverage":round(nv/np2*100,1) if np2>0 else 0,
+                        "visits":tv,"capacity":cap,
+                        "cap_pct":round(tv/cap*100,1) if cap>0 else 0,
+                        "vpd":round(tv/WORKING_DAYS,1),
+                        "sales":round(rb["total_sales"].sum(),0),
+                        "avg_dist":round(rb[dc_col].mean(),1) if len(rb)>0 else 0,
+                        "max_dist":round(rb[dc_col].max(),1) if len(rb)>0 else 0,
+                    }
+                return {"name":name,"new_lat":new_rep_lat,"new_lng":new_rep_lng,
+                        "coverage":new_cov,"assignments":ba,"results":results,
+                        "total_activated":total_act}
 
-        # ── Scenario 1: Overload Relief ──────────────────────────────────────
-        # Place NewRep at centroid of most overloaded rep's territory
-        overload_scores = {}
-        for terr in lang_terrs:
-            rep_name = TERRITORY_TO_REP.get(terr, "")
-            if not rep_name: continue
-            terr_bl = block_info[block_info["orig_territory"]==terr]
-            terr_visits = terr_bl["base_visits"].sum()
-            rep_cap_val = REP_CAPACITY.get(rep_name, {"capacity":1435})["capacity"]
-            overload_scores[terr] = terr_visits / rep_cap_val if rep_cap_val > 0 else 0
-        if overload_scores:
-            ol_terr = max(overload_scores, key=overload_scores.get)
-            ol_bl = block_info[block_info["orig_territory"]==ol_terr]
-            s1_lat, s1_lng = find_optimal_location(ol_bl, "total_pharma")
-        else:
-            s1_lat, s1_lng = find_optimal_location(lang_blocks, "total_pharma")
+            # Generate scenarios
+            if wi_no_new_rep:
+                # Single scenario: optimise with existing 6 reps only
+                scenarios = [run_scenario("6-Rep Optimisation", 0.0, 0.0)]
+            else:
+                lang_blocks = block_info[block_info["language"] == wi_new_lang]
+                lang_terrs = LANGUAGE_TERRITORIES.get(wi_new_lang, [])
 
-        # ── Scenario 2: Geographic Gap ────────────────────────────────────────
-        # Place NewRep where average travel distance to existing rep homes is highest
-        rep_homes_lang = {TERRITORY_TO_REP.get(t,""): REP_HOME.get(TERRITORY_TO_REP.get(t,""),{})
-                         for t in lang_terrs if TERRITORY_TO_REP.get(t,"") in REP_HOME}
-        if len(lang_blocks) > 0 and rep_homes_lang:
-            _gap_bl = lang_blocks.copy()
-            _gap_bl["_gap"] = _gap_bl.apply(
-                lambda row: min([haversine_km(h["lat"],h["lng"],row["lat"],row["lng"])
-                                for h in rep_homes_lang.values() if h], default=999), axis=1)
-            _top_gap = _gap_bl.nlargest(max(1, len(_gap_bl)//4), "_gap")
-            s2_lat = (_top_gap["lat"] * _top_gap["total_pharma"]).sum() / max(_top_gap["total_pharma"].sum(), 1)
-            s2_lng = (_top_gap["lng"] * _top_gap["total_pharma"]).sum() / max(_top_gap["total_pharma"].sum(), 1)
-        else:
-            s2_lat, s2_lng = s1_lat, s1_lng
+                # ── Scenario 1: Overload Relief ──────────────────────────────────────
+                overload_scores = {}
+                for terr in lang_terrs:
+                    rep_name = TERRITORY_TO_REP.get(terr, "")
+                    if not rep_name: continue
+                    terr_bl = block_info[block_info["orig_territory"]==terr]
+                    terr_visits = terr_bl["base_visits"].sum()
+                    rep_cap_val = REP_CAPACITY.get(rep_name, {"capacity":1435})["capacity"]
+                    overload_scores[terr] = terr_visits / rep_cap_val if rep_cap_val > 0 else 0
+                if overload_scores:
+                    ol_terr = max(overload_scores, key=overload_scores.get)
+                    ol_bl = block_info[block_info["orig_territory"]==ol_terr]
+                    s1_lat, s1_lng = find_optimal_location(ol_bl, "total_pharma")
+                else:
+                    s1_lat, s1_lng = find_optimal_location(lang_blocks, "total_pharma")
 
-        # ── Scenario 3: Coverage-focused ─────────────────────────────────────
-        # Place NewRep near highest-value Observe pharmacy clusters
-        obs_lang = lang_blocks[lang_blocks["activated_obs"] > 0]
-        if len(obs_lang) > 0:
-            s3_lat, s3_lng = find_optimal_location(obs_lang, "total_sales")
-        else:
-            s3_lat, s3_lng = find_optimal_location(lang_blocks, "total_sales")
+                # ── Scenario 2: Geographic Gap ────────────────────────────────────────
+                rep_homes_lang = {TERRITORY_TO_REP.get(t,""): REP_HOME.get(TERRITORY_TO_REP.get(t,""),{})
+                                 for t in lang_terrs if TERRITORY_TO_REP.get(t,"") in REP_HOME}
+                if len(lang_blocks) > 0 and rep_homes_lang:
+                    _gap_bl = lang_blocks.copy()
+                    _gap_bl["_gap"] = _gap_bl.apply(
+                        lambda row: min([haversine_km(h["lat"],h["lng"],row["lat"],row["lng"])
+                                        for h in rep_homes_lang.values() if h], default=999), axis=1)
+                    _top_gap = _gap_bl.nlargest(max(1, len(_gap_bl)//4), "_gap")
+                    s2_lat = (_top_gap["lat"] * _top_gap["total_pharma"]).sum() / max(_top_gap["total_pharma"].sum(), 1)
+                    s2_lng = (_top_gap["lng"] * _top_gap["total_pharma"]).sum() / max(_top_gap["total_pharma"].sum(), 1)
+                else:
+                    s2_lat, s2_lng = s1_lat, s1_lng
 
-        scenarios = [
-            run_scenario("1. Overload Relief", s1_lat, s1_lng),
-            run_scenario("2. Geographic Gap", s2_lat, s2_lng),
-            run_scenario("3. Coverage-focused", s3_lat, s3_lng),
-        ]
-        # ── Scenario 4: Manual Placement (if coordinates provided) ───────────
-        _mlat = st.session_state.get("wi_mlat", 0.0)
-        _mlng = st.session_state.get("wi_mlng", 0.0)
-        if _mlat > 0 and _mlng > 0:
-            scenarios.append(run_scenario("4. Manual Placement", _mlat, _mlng))
-        st.session_state["wi_scenarios"] = scenarios
+                # ── Scenario 3: Coverage-focused ─────────────────────────────────────
+                obs_lang = lang_blocks[lang_blocks["activated_obs"] > 0]
+                if len(obs_lang) > 0:
+                    s3_lat, s3_lng = find_optimal_location(obs_lang, "total_sales")
+                else:
+                    s3_lat, s3_lng = find_optimal_location(lang_blocks, "total_sales")
 
-        st.markdown('''<div style="background:#546955;border-radius:10px;padding:12px 16px;margin:6px 0 12px 0;width:fit-content;max-width:100%;font-size:12px;color:#F7EFE6;line-height:1.8;">
+                scenarios = [
+                    run_scenario("1. Overload Relief", s1_lat, s1_lng),
+                    run_scenario("2. Geographic Gap", s2_lat, s2_lng),
+                    run_scenario("3. Coverage-focused", s3_lat, s3_lng),
+                ]
+            st.session_state["wi_scenarios"] = scenarios
+
+            if wi_no_new_rep:
+                st.markdown('''<div style="background:#546955;border-radius:10px;padding:12px 16px;margin:6px 0 12px 0;width:fit-content;max-width:100%;font-size:12px;color:#F7EFE6;line-height:1.8;">
+6-Rep Optimisation — blocks redistributed among existing 6 reps to maximise coverage without adding a new rep.<br><br>
+<i>Click on Load to see changes on the map.</i>
+</div>''', unsafe_allow_html=True)
+            else:
+                st.markdown('''<div style="background:#546955;border-radius:10px;padding:12px 16px;margin:6px 0 12px 0;width:fit-content;max-width:100%;font-size:12px;color:#F7EFE6;line-height:1.8;">
 Scenarios:<br>
-&#8226; 1. Overload Relief — New Rep placed at the centroid of the most overloaded Rep's territory, relieving capacity pressure.<br>
-&#8226; 2. Geographic Gap — New Rep placed where existing Reps travel furthest, reducing average travel distances.<br>
-&#8226; 3. Coverage-focused — New Rep placed near highest-value Observe clusters to maximise coverage gain.<br>
-&#8226; 4. Manual Placement — You set coordinates via Lat/Lng inputs; the algorithm assigns the nearest blocks.<br><br>
+&#8226; 1. Overload Relief — New Rep at centroid of most overloaded territory.<br>
+&#8226; 2. Geographic Gap — New Rep where existing Reps travel furthest.<br>
+&#8226; 3. Coverage-focused — New Rep near highest-value Observe clusters.<br>
+&#8226; 4. Manual Placement — enter coordinates below to place the New Rep manually.<br><br>
 <i>Click on Load to see changes on the map.</i>
 </div>''', unsafe_allow_html=True)
 
-        for sc in scenarios:
-            with st.expander(f"{sc['name']} \u2014 Coverage: {sc['coverage']}% \u2014 New rep at ({sc['new_lat']:.2f}, {sc['new_lng']:.2f})"):
-                st.markdown(f"**Coverage: {current_cov}% \u2192 {sc['coverage']}%** ({sc.get('total_activated',0)} Observe pharmacies activated)")
+            for sc in st.session_state.get("wi_scenarios", []):
+                exp_label = f"{sc['name']} — Coverage: {sc['coverage']}%" if wi_no_new_rep else f"{sc['name']} — Coverage: {sc['coverage']}% — New rep at ({sc['new_lat']:.2f}, {sc['new_lng']:.2f})"
+                with st.expander(exp_label):
+                    st.markdown(f"**Coverage: {current_cov}% \u2192 {sc['coverage']}%** ({sc.get('total_activated',0)} Observe pharmacies activated)")
 
-                sh = f'<table style="width:100%;border-collapse:collapse;font-size:16px;"><tr style="background:{HDR_BG};color:white;">'
-                for col in ["Rep","Lang","Blocks","Ph.","Visited","New Obs","Cov%","Visits","Visits/Day","Cap%","Avg km","Max km","Sales"]:
-                    sh += f'<th style="padding:6px;text-align:center;">{col}</th>'
-                sh += '</tr>'
-                tot_bl=0;tot_ph=0;tot_vi=0;tot_ob=0;tot_vs=0;tot_sl=0;tot_cn=0;tot_cd=0
-                for rn in [r for r in REP_ORDER if r in (list(REP_HOME.keys()) + ["NewRep"])]:
-                    r = sc["results"].get(rn, {})
-                    rl = rep_lang.get(rn, "?")
-                    bg = "background:#ffe8f6;" if rn=="NewRep" else ""
-                    cp = r.get("cap_pct",0)
-                    cs2 = "color:#e74c3c;font-weight:bold;" if cp>100 else ("color:#e67e22;" if cp<80 else "")
-                    sh += f'<tr style="border-bottom:1px solid #eee;{bg}">'
-                    sh += f'<td style="padding:4px;font-weight:bold;">{rn}</td>'
-                    sh += f'<td style="padding:4px;text-align:center;font-size:14px;">{rl}</td>'
-                    for v in [r.get("blocks",0), r.get("pharmacies",0), r.get("visited",0), r.get("activated_obs",0)]:
-                        sh += f'<td style="padding:4px;text-align:center;">{v}</td>'
-                    sh += f'<td style="padding:4px;text-align:center;">{r.get("coverage",0)}%</td>'
-                    sh += f'<td style="padding:4px;text-align:center;">{r.get("visits",0):,}</td>'
-                    sh += f'<td style="padding:4px;text-align:center;">{r.get("vpd",0)}</td>'
-                    sh += f'<td style="padding:4px;text-align:center;{cs2}">{cp}%</td>'
-                    sh += f'<td style="padding:4px;text-align:center;">{r.get("avg_dist",0)}</td>'
-                    sh += f'<td style="padding:4px;text-align:center;">{r.get("max_dist",0)}</td>'
-                    sh += f'<td style="padding:4px;text-align:center;">{r.get("sales",0):,.0f}</td></tr>'
-                    rc = REP_CAPACITY.get(rn,{"capacity":wi_max_visits})["capacity"] if rn!="NewRep" else wi_max_visits
-                    tot_bl+=r.get("blocks",0);tot_ph+=r.get("pharmacies",0);tot_vi+=r.get("visited",0)
-                    tot_ob+=r.get("activated_obs",0);tot_vs+=r.get("visits",0);tot_sl+=r.get("sales",0)
-                    tot_cn+=r.get("visits",0);tot_cd+=rc
-                t_cov=round(tot_vi/tot_ph*100,1) if tot_ph>0 else 0
-                t_cap=round(tot_cn/tot_cd*100,1) if tot_cd>0 else 0
-                t_vpd=round(tot_vs/WORKING_DAYS,1)
-                t_cs="color:#e74c3c;font-weight:bold;" if t_cap>100 else ""
-                sh+=f'<tr style="background:#F0E5D8;font-weight:bold;border-top:2px solid #6D7F6E;">'
-                sh+=f'<td style="padding:4px;">Total</td><td></td>'
-                sh+=f'<td style="padding:4px;text-align:center;">{tot_bl}</td><td style="padding:4px;text-align:center;">{tot_ph}</td>'
-                sh+=f'<td style="padding:4px;text-align:center;">{tot_vi}</td><td style="padding:4px;text-align:center;">{tot_ob}</td>'
-                sh+=f'<td style="padding:4px;text-align:center;">{t_cov}%</td><td style="padding:4px;text-align:center;">{tot_vs:,}</td>'
-                sh+=f'<td style="padding:4px;text-align:center;">{t_vpd}</td><td style="padding:4px;text-align:center;{t_cs}">{t_cap}%</td>'
-                sh+='<td style="padding:4px;text-align:center;">—</td><td style="padding:4px;text-align:center;">—</td>'
-                sh+=f'<td style="padding:4px;text-align:center;">{tot_sl:,.0f}</td></tr>'
-                sh += '</table>'
-                st.markdown(sh, unsafe_allow_html=True)
+                    sh = f'<table style="width:100%;border-collapse:collapse;font-size:16px;"><tr style="background:{HDR_BG};color:white;">'
+                    for col in ["Rep","Lang","Blocks","Ph.","Visited","New Obs","Cov%","Visits","Visits/Day","Cap%","Avg km","Max km","Sales"]:
+                        sh += f'<th style="padding:6px;text-align:center;">{col}</th>'
+                    sh += '</tr>'
+                    tot_bl=0;tot_ph=0;tot_vi=0;tot_ob=0;tot_vs=0;tot_sl=0;tot_cn=0;tot_cd=0
+                    for rn in [r for r in REP_ORDER if r in (list(REP_HOME.keys()) + ["NewRep"])]:
+                        r = sc["results"].get(rn, {})
+                        rl = rep_lang.get(rn, "?")
+                        bg = "background:#ffe8f6;" if rn=="NewRep" else ""
+                        cp = r.get("cap_pct",0)
+                        cs2 = "color:#e74c3c;font-weight:bold;" if cp>100 else ("color:#e67e22;" if cp<80 else "")
+                        sh += f'<tr style="border-bottom:1px solid #eee;{bg}">'
+                        sh += f'<td style="padding:4px;font-weight:bold;">{rn}</td>'
+                        sh += f'<td style="padding:4px;text-align:center;font-size:14px;">{rl}</td>'
+                        for v in [r.get("blocks",0), r.get("pharmacies",0), r.get("visited",0), r.get("activated_obs",0)]:
+                            sh += f'<td style="padding:4px;text-align:center;">{v}</td>'
+                        sh += f'<td style="padding:4px;text-align:center;">{r.get("coverage",0)}%</td>'
+                        sh += f'<td style="padding:4px;text-align:center;">{r.get("visits",0):,}</td>'
+                        sh += f'<td style="padding:4px;text-align:center;">{r.get("vpd",0)}</td>'
+                        sh += f'<td style="padding:4px;text-align:center;{cs2}">{cp}%</td>'
+                        sh += f'<td style="padding:4px;text-align:center;">{r.get("avg_dist",0)}</td>'
+                        sh += f'<td style="padding:4px;text-align:center;">{r.get("max_dist",0)}</td>'
+                        sh += f'<td style="padding:4px;text-align:center;">{r.get("sales",0):,.0f}</td></tr>'
+                        rc = REP_CAPACITY.get(rn,{"capacity":wi_max_visits})["capacity"] if rn!="NewRep" else wi_max_visits
+                        tot_bl+=r.get("blocks",0);tot_ph+=r.get("pharmacies",0);tot_vi+=r.get("visited",0)
+                        tot_ob+=r.get("activated_obs",0);tot_vs+=r.get("visits",0);tot_sl+=r.get("sales",0)
+                        tot_cn+=r.get("visits",0);tot_cd+=rc
+                    t_cov=round(tot_vi/tot_ph*100,1) if tot_ph>0 else 0
+                    t_cap=round(tot_cn/tot_cd*100,1) if tot_cd>0 else 0
+                    t_vpd=round(tot_vs/WORKING_DAYS,1)
+                    t_cs="color:#e74c3c;font-weight:bold;" if t_cap>100 else ""
+                    sh+=f'<tr style="background:#F0E5D8;font-weight:bold;border-top:2px solid #6D7F6E;">'
+                    sh+=f'<td style="padding:4px;">Total</td><td></td>'
+                    sh+=f'<td style="padding:4px;text-align:center;">{tot_bl}</td><td style="padding:4px;text-align:center;">{tot_ph}</td>'
+                    sh+=f'<td style="padding:4px;text-align:center;">{tot_vi}</td><td style="padding:4px;text-align:center;">{tot_ob}</td>'
+                    sh+=f'<td style="padding:4px;text-align:center;">{t_cov}%</td><td style="padding:4px;text-align:center;">{tot_vs:,}</td>'
+                    sh+=f'<td style="padding:4px;text-align:center;">{t_vpd}</td><td style="padding:4px;text-align:center;{t_cs}">{t_cap}%</td>'
+                    sh+='<td style="padding:4px;text-align:center;">—</td><td style="padding:4px;text-align:center;">—</td>'
+                    sh+=f'<td style="padding:4px;text-align:center;">{tot_sl:,.0f}</td></tr>'
+                    sh += '</table>'
+                    st.markdown(sh, unsafe_allow_html=True)
 
-                # Recommendations panel when over capacity
-                sc_total_visits = sum(r.get("visits",0) for r in sc["results"].values())
-                sc_total_cap = sum(REP_CAPACITY.get(rn,{"capacity":wi_max_visits})["capacity"] if rn!="NewRep" else wi_max_visits for rn in sc["results"])
-                sc_cap_pct = round(sc_total_visits/sc_total_cap*100,1) if sc_total_cap>0 else 0
-                if sc_cap_pct > 100:
-                    obs_freq_r = wi_freq.get("Observe",4)
-                    obs_activated = sc.get("total_activated",0)
-                    cvm_visits = sc_total_visits - obs_activated*obs_freq_r
-                    scale = (sc_total_cap - obs_activated*obs_freq_r)/cvm_visits if cvm_visits>0 else 1
-                    sug = {c: max(1,round(wi_freq.get(c,4)*scale)) for c in ["Build","Defend","Gain","Maintain"]}
-                    freq_sug = ", ".join([f"{c}: {sug[c]}" for c in ["Build","Defend","Gain","Maintain"]])
-                    rec_title = f"Possible options to reach at least 110% capacity (current: {sc_cap_pct}%)" if sc_cap_pct>110 else f"Possible options to reach about 100% capacity (current: {sc_cap_pct}%)"
-                    cap_target = 1.10 if sc_cap_pct>110 else 1.00
-                    cap_label = "110%" if sc_cap_pct>110 else "100%"
-                    if obs_freq_r > 0:
-                        headroom = sc_total_cap*cap_target - cvm_visits
-                        max_obs = max(0, int(headroom/obs_freq_r))
-                        cov_at = round((int(block_info["visited_count"].sum())+max_obs)/total_pharma*100,1)
-                        cap_at = round((cvm_visits+max_obs*obs_freq_r)/sc_total_cap*100,1)
-                        opt1 = f"<b>1. Keep frequencies, limit Observe to {cap_label} capacity:</b><br>&nbsp;&nbsp;Activate <strong>{max_obs}</strong> Observe pharmacies (freq={obs_freq_r}) → coverage <strong>{cov_at}%</strong>, capacity <strong>{cap_at}%</strong><br><br>"
-                    else:
-                        opt1 = "<b>1. Keep frequencies:</b><br>&nbsp;&nbsp;Set <strong>Current Observe frequency &gt; 0</strong> to activate Observe pharmacies.<br><br>"
-                    avg_cap = sc_total_cap/max(len(sc["results"]),1)
-                    extra_reps = max(1,int(np.ceil((sc_total_visits-sc_total_cap)/avg_cap)))
-                    # Option 3: combined — reduce freq AND lower coverage to hit cap target
-                    scale_110 = cap_target
-                    cvm_budget_110 = sc_total_cap * scale_110 - obs_activated * obs_freq_r
-                    scale3 = cvm_budget_110 / cvm_visits if cvm_visits > 0 else 1
-                    sug3 = {c: max(1, round(wi_freq.get(c,4)*scale3)) for c in ['Build','Defend','Gain','Maintain']}
-                    if obs_freq_r > 0:
-                        _cvm_ph_counts = {c: len(pharma_current[pharma_current["CVM_clean"]==c]) for c in ["Build","Defend","Gain","Maintain"]}
-                        _target_obs = max(0, int(np.ceil(wi_target/100*total_pharma)) - int(block_info["visited_count"].sum()))
-                        _cap_budget = sc_total_cap * cap_target
-                        # Compute scale needed to fit half of target Observe pharmacies
-                        _min_scale = (_cap_budget - _target_obs * 0.5 * obs_freq_r) / cvm_visits if cvm_visits > 0 else 0.7
-                        _min_scale = max(0.3, min(0.95, _min_scale))
-                        # 3a: more aggressive reduction → fits more Observe
-                        _sc3a = round(max(0.3, _min_scale - 0.1), 2)
-                        _sug3a = {c: max(1, round(wi_freq.get(c,4)*_sc3a)) for c in ["Build","Defend","Gain","Maintain"]}
-                        _cv3a = sum(_sug3a[c]*_cvm_ph_counts.get(c,0) for c in _sug3a)
-                        _obs3a = max(0, min(int((_cap_budget - _cv3a)/obs_freq_r), int(_target_obs*0.85)))
-                        _cov3a = round((int(block_info["visited_count"].sum())+_obs3a)/total_pharma*100,1)
-                        _f3a = ", ".join([f"{c}: {_sug3a[c]}" for c in ["Build","Defend","Gain","Maintain"]])
-                        # 3b: less aggressive reduction → fits fewer Observe
-                        _sc3b = round(min(0.95, _min_scale + 0.1), 2)
-                        _sug3b = {c: max(1, round(wi_freq.get(c,4)*_sc3b)) for c in ["Build","Defend","Gain","Maintain"]}
-                        _cv3b = sum(_sug3b[c]*_cvm_ph_counts.get(c,0) for c in _sug3b)
-                        _obs3b = max(0, min(int((_cap_budget - _cv3b)/obs_freq_r), int(_target_obs*0.5)))
-                        _cov3b = round((int(block_info["visited_count"].sum())+_obs3b)/total_pharma*100,1)
-                        _f3b = ", ".join([f"{c}: {_sug3b[c]}" for c in ["Build","Defend","Gain","Maintain"]])
-                        opt3 = (
-                            f'<b>3. Combined — reduce frequencies AND number of Observe pharmacies to reach {cap_label} capacity:</b><br>'
-                            f'&nbsp;&nbsp;<i>3a — reduce frequencies more, activate more Observe ({_obs3a} instead of {_target_obs}):</i><br>'
-                            f'&nbsp;&nbsp;&nbsp;&nbsp;Freq {{{_f3a}}} + <strong>{_obs3a}</strong> Observe → coverage <strong>{_cov3a}%</strong><br>'
-                            f'&nbsp;&nbsp;<i>3b — reduce frequencies less, activate fewer Observe ({_obs3b} instead of {_target_obs}):</i><br>'
-                            f'&nbsp;&nbsp;&nbsp;&nbsp;Freq {{{_f3b}}} + <strong>{_obs3b}</strong> Observe → coverage <strong>{_cov3b}%</strong><br>'
-                        )
-                    else:
-                        opt3 = '<b>3. Combined option:</b><br>&nbsp;&nbsp;Set <strong>Current Observe frequency &gt; 0</strong> to enable combined options.<br>'
-                    rec = (f'<div style="background:#f5f8ff;border-left:4px solid #6D7F6E;border-radius:6px;padding:12px;margin:10px 0;font-size:14px;">'
-                           f'<strong>{rec_title}</strong><br><br>'+opt1+
-                           f'<b>2. Keep {wi_target}% coverage, reduce CVM frequencies:</b><br>'
-                           f'&nbsp;&nbsp;Suggested: {{{freq_sug}}}<br><br>'+opt3+'</div>')
-                    st.markdown(rec, unsafe_allow_html=True)
+                    # Recommendations panel when over capacity
+                    sc_total_visits = sum(r.get("visits",0) for r in sc["results"].values())
+                    sc_total_cap = sum(REP_CAPACITY.get(rn,{"capacity":wi_max_visits})["capacity"] if rn!="NewRep" else wi_max_visits for rn in sc["results"])
+                    sc_cap_pct = round(sc_total_visits/sc_total_cap*100,1) if sc_total_cap>0 else 0
+                    if sc_cap_pct > 100:
+                        obs_freq_r = wi_freq.get("Observe",4)
+                        obs_activated = sc.get("total_activated",0)
+                        cvm_visits = sc_total_visits - obs_activated*obs_freq_r
+                        scale = (sc_total_cap - obs_activated*obs_freq_r)/cvm_visits if cvm_visits>0 else 1
+                        sug = {c: max(1,round(wi_freq.get(c,4)*scale)) for c in ["Build","Defend","Gain","Maintain"]}
+                        freq_sug = ", ".join([f"{c}: {sug[c]}" for c in ["Build","Defend","Gain","Maintain"]])
+                        rec_title = f"Possible options to reach at least 110% capacity (current: {sc_cap_pct}%)" if sc_cap_pct>110 else f"Possible options to reach about 100% capacity (current: {sc_cap_pct}%)"
+                        cap_target = 1.10 if sc_cap_pct>110 else 1.00
+                        cap_label = "110%" if sc_cap_pct>110 else "100%"
+                        if obs_freq_r > 0:
+                            headroom = sc_total_cap*cap_target - cvm_visits
+                            max_obs = max(0, int(headroom/obs_freq_r))
+                            cov_at = round((int(block_info["visited_count"].sum())+max_obs)/total_pharma*100,1)
+                            cap_at = round((cvm_visits+max_obs*obs_freq_r)/sc_total_cap*100,1)
+                            opt1 = f"<b>1. Keep frequencies, limit Observe to {cap_label} capacity:</b><br>&nbsp;&nbsp;Activate <strong>{max_obs}</strong> Observe pharmacies (freq={obs_freq_r}) → coverage <strong>{cov_at}%</strong>, capacity <strong>{cap_at}%</strong><br><br>"
+                        else:
+                            opt1 = "<b>1. Keep frequencies:</b><br>&nbsp;&nbsp;Set <strong>Current Observe frequency &gt; 0</strong> to activate Observe pharmacies.<br><br>"
+                        avg_cap = sc_total_cap/max(len(sc["results"]),1)
+                        extra_reps = max(1,int(np.ceil((sc_total_visits-sc_total_cap)/avg_cap)))
+                        # Option 3: combined — reduce freq AND lower coverage to hit cap target
+                        scale_110 = cap_target
+                        cvm_budget_110 = sc_total_cap * scale_110 - obs_activated * obs_freq_r
+                        scale3 = cvm_budget_110 / cvm_visits if cvm_visits > 0 else 1
+                        sug3 = {c: max(1, round(wi_freq.get(c,4)*scale3)) for c in ['Build','Defend','Gain','Maintain']}
+                        if obs_freq_r > 0:
+                            _cvm_ph_counts = {c: len(pharma_current[pharma_current["CVM_clean"]==c]) for c in ["Build","Defend","Gain","Maintain"]}
+                            _target_obs = max(0, int(np.ceil(wi_target/100*total_pharma)) - int(block_info["visited_count"].sum()))
+                            _cap_budget = sc_total_cap * cap_target
+                            # Compute scale needed to fit half of target Observe pharmacies
+                            _min_scale = (_cap_budget - _target_obs * 0.5 * obs_freq_r) / cvm_visits if cvm_visits > 0 else 0.7
+                            _min_scale = max(0.3, min(0.95, _min_scale))
+                            # 3a: more aggressive reduction → fits more Observe
+                            _sc3a = round(max(0.3, _min_scale - 0.1), 2)
+                            _sug3a = {c: max(1, round(wi_freq.get(c,4)*_sc3a)) for c in ["Build","Defend","Gain","Maintain"]}
+                            _cv3a = sum(_sug3a[c]*_cvm_ph_counts.get(c,0) for c in _sug3a)
+                            _obs3a = max(0, min(int((_cap_budget - _cv3a)/obs_freq_r), int(_target_obs*0.85)))
+                            _cov3a = round((int(block_info["visited_count"].sum())+_obs3a)/total_pharma*100,1)
+                            _f3a = ", ".join([f"{c}: {_sug3a[c]}" for c in ["Build","Defend","Gain","Maintain"]])
+                            # 3b: less aggressive reduction → fits fewer Observe
+                            _sc3b = round(min(0.95, _min_scale + 0.1), 2)
+                            _sug3b = {c: max(1, round(wi_freq.get(c,4)*_sc3b)) for c in ["Build","Defend","Gain","Maintain"]}
+                            _cv3b = sum(_sug3b[c]*_cvm_ph_counts.get(c,0) for c in _sug3b)
+                            _obs3b = max(0, min(int((_cap_budget - _cv3b)/obs_freq_r), int(_target_obs*0.5)))
+                            _cov3b = round((int(block_info["visited_count"].sum())+_obs3b)/total_pharma*100,1)
+                            _f3b = ", ".join([f"{c}: {_sug3b[c]}" for c in ["Build","Defend","Gain","Maintain"]])
+                            opt3 = (
+                                f'<b>3. Combined — reduce frequencies AND number of Observe pharmacies to reach {cap_label} capacity:</b><br>'
+                                f'&nbsp;&nbsp;<i>3a — reduce frequencies more, activate more Observe ({_obs3a} instead of {_target_obs}):</i><br>'
+                                f'&nbsp;&nbsp;&nbsp;&nbsp;Freq {{{_f3a}}} + <strong>{_obs3a}</strong> Observe → coverage <strong>{_cov3a}%</strong><br>'
+                                f'&nbsp;&nbsp;<i>3b — reduce frequencies less, activate fewer Observe ({_obs3b} instead of {_target_obs}):</i><br>'
+                                f'&nbsp;&nbsp;&nbsp;&nbsp;Freq {{{_f3b}}} + <strong>{_obs3b}</strong> Observe → coverage <strong>{_cov3b}%</strong><br>'
+                            )
+                        else:
+                            opt3 = '<b>3. Combined option:</b><br>&nbsp;&nbsp;Set <strong>Current Observe frequency &gt; 0</strong> to enable combined options.<br>'
+                        rec = (f'<div style="background:#f5f8ff;border-left:4px solid #6D7F6E;border-radius:6px;padding:12px;margin:10px 0;font-size:14px;">'
+                               f'<strong>{rec_title}</strong><br><br>'+opt1+
+                               f'<b>2. Keep {wi_target}% coverage, reduce CVM frequencies:</b><br>'
+                               f'&nbsp;&nbsp;Suggested: {{{freq_sug}}}<br><br>'+opt3+'</div>')
+                        st.markdown(rec, unsafe_allow_html=True)
 
-                # Block moves summary
-                changes_from = {}
-                for bid, new_rep in sc["assignments"].items():
-                    old_t = original_assignments.get(bid, "")
-                    old_r = TERRITORY_TO_REP.get(old_t, old_t)
-                    if old_r != new_rep:
-                        key = f"{old_r} \u2192 {new_rep}"
-                        changes_from[key] = changes_from.get(key, 0) + 1
-                if changes_from:
-                    st.markdown("**Block moves:**")
-                    for mv, cnt in sorted(changes_from.items(), key=lambda x: -x[1]):
-                        st.markdown(f"&nbsp;&nbsp;{mv}: {cnt} blocks")
+                    # Block moves summary
+                    changes_from = {}
+                    for bid, new_rep in sc["assignments"].items():
+                        old_t = original_assignments.get(bid, "")
+                        old_r = TERRITORY_TO_REP.get(old_t, old_t)
+                        if old_r != new_rep:
+                            key = f"{old_r} \u2192 {new_rep}"
+                            changes_from[key] = changes_from.get(key, 0) + 1
+                    if changes_from:
+                        st.markdown("**Block moves:**")
+                        for mv, cnt in sorted(changes_from.items(), key=lambda x: -x[1]):
+                            st.markdown(f"&nbsp;&nbsp;{mv}: {cnt} blocks")
 
-                if st.button(f"Load {sc['name']}", key=f"load_{sc['name']}"):
-                    r2t = dict(REP_TO_TERRITORY); r2t["NewRep"] = "NEW-REP"
-                    na = {bid: r2t.get(rep, rep) for bid, rep in sc["assignments"].items()}
-                    if "NEW-REP" not in st.session_state.custom_territories:
-                        st.session_state.custom_territories["NEW-REP"] = "#FF78D2"
-                    st.session_state.undo_stack.append(dict(st.session_state.assignments))
-                    st.session_state.assignments = na
-                    st.session_state["wi_loaded_scenario"] = sc
-                    st.session_state.loaded_scenario_results = sc["results"]
-                    st.rerun()
+                    if st.button(f"Load {sc['name']}", key=f"load_{sc['name']}"):
+                        r2t = dict(REP_TO_TERRITORY); r2t["NewRep"] = "NEW-REP"
+                        na = {bid: r2t.get(rep, rep) for bid, rep in sc["assignments"].items()}
+                        if "NEW-REP" not in st.session_state.custom_territories:
+                            st.session_state.custom_territories["NEW-REP"] = "#FF78D2"
+                        st.session_state.undo_stack.append(dict(st.session_state.assignments))
+                        st.session_state.assignments = na
+                        st.session_state["wi_loaded_scenario"] = sc
+                        st.session_state.loaded_scenario_results = sc["results"]
+                        st.rerun()
 
-    else:
-        st.markdown('<p style="color:#6D7F6E;font-size:14px;">Set parameters and click <b>Generate Scenario</b> to see optimization results.</p>', unsafe_allow_html=True)
+            # Manual Placement — shown as 4th expander after auto scenarios
+            if not wi_no_new_rep:
+                _man_sc_existing = next((s for s in st.session_state.get("wi_scenarios",[]) if s["name"] == "4. Manual Placement"), None)
+                _man_label = f"4. Manual Placement — Coverage: {_man_sc_existing['coverage']}% — New rep at ({_man_sc_existing['new_lat']:.2f}, {_man_sc_existing['new_lng']:.2f})" if _man_sc_existing else "4. Manual Placement — Enter coordinates to generate scenario"
+                with st.expander(_man_label):
+                    _mc1, _mc2 = st.columns(2)
+                    with _mc1: wi_manual_lat = st.number_input("Lat:", min_value=0.0, max_value=90.0, value=st.session_state.get("wi_mlat",0.0), step=0.01, format="%.4f", key="wi_mlat")
+                    with _mc2: wi_manual_lng = st.number_input("Lng:", min_value=0.0, max_value=30.0, value=st.session_state.get("wi_mlng",0.0), step=0.01, format="%.4f", key="wi_mlng")
+                    if st.button("Generate Manual Scenario.", type="primary"):
+                        if wi_manual_lat > 0 and wi_manual_lng > 0:
+                            _man_sc = run_scenario("4. Manual Placement", wi_manual_lat, wi_manual_lng)
+                            _existing = [s for s in st.session_state.get("wi_scenarios",[]) if s["name"] != "4. Manual Placement"]
+                            st.session_state["wi_scenarios"] = _existing + [_man_sc]
+                            st.rerun()
+                        else:
+                            st.warning("Please enter valid coordinates (Lat > 0, Lng > 0).")
+                    if _man_sc_existing:
+                        sh = f'<table style="width:100%;border-collapse:collapse;font-size:16px;"><tr style="background:{HDR_BG};color:white;">'
+                        for col in ["Rep","Lang","Blocks","Ph.","Visited","New Obs","Cov%","Visits","Visits/Day","Cap%","Avg km","Max km","Sales"]:
+                            sh += f'<th style="padding:6px;text-align:center;">{col}</th>'
+                        sh += '</tr>'
+                        for rn in [r for r in REP_ORDER if r in (list(REP_HOME.keys()) + ["NewRep"])]:
+                            r = _man_sc_existing["results"].get(rn, {})
+                            rl = rep_lang.get(rn, "?")
+                            bg = "background:#ffe8f6;" if rn=="NewRep" else ""
+                            cp = r.get("cap_pct",0)
+                            cs2 = "color:#e74c3c;font-weight:bold;" if cp>100 else ("color:#e67e22;" if cp<80 else "")
+                            sh += f'<tr style="border-bottom:1px solid #eee;{bg}"><td style="padding:4px;text-align:center;">{rn}</td><td style="padding:4px;text-align:center;">{rl[0]}</td><td style="padding:4px;text-align:center;">{r.get("blocks",0)}</td><td style="padding:4px;text-align:center;">{r.get("pharmacies",0)}</td><td style="padding:4px;text-align:center;">{r.get("visited",0)}</td><td style="padding:4px;text-align:center;">{r.get("new_obs",0)}</td><td style="padding:4px;text-align:center;">{r.get("cov_pct",0):.1f}%</td><td style="padding:4px;text-align:center;">{r.get("visits",0)}</td><td style="padding:4px;text-align:center;">{r.get("vpd",0):.1f}</td><td style="padding:4px;text-align:center;{cs2}">{cp:.1f}%</td><td style="padding:4px;text-align:center;">{r.get("avg_km",0):.1f}</td><td style="padding:4px;text-align:center;">{r.get("max_km",0):.1f}</td><td style="padding:4px;text-align:center;">{r.get("sales",0):,.0f}</td></tr>'
+                        sh += '</table>'
+                        st.markdown(sh, unsafe_allow_html=True)
+                        if st.button("Load 4. Manual Placement.", key="load_manual"):
+                            na = {**st.session_state.assignments, **_man_sc_existing["block_assignments"]}
+                            if "NewRep" in _man_sc_existing["results"]:
+                                st.session_state.custom_territories["NEW-REP"] = "#FF78D2"
+                            st.session_state.undo_stack.append(dict(st.session_state.assignments))
+                            st.session_state.assignments = na
+                            st.session_state["wi_loaded_scenario"] = _man_sc_existing
+                            st.session_state.loaded_scenario_results = _man_sc_existing["results"]
+                            st.rerun()
 
-# SCENARIO MANAGEMENT
-# Ensure wi_freq etc. have defaults if Coverage Optimisation hasn't been run
-if "wi_freq" not in dir() or not wi_freq:
-    wi_freq = {c: st.session_state.get(f"wi_freq_{c}", 4) for c in ["Build","Defend","Gain","Maintain","Observe"]}
-if "wi_tp_freq" not in dir() or not wi_tp_freq:
-    wi_tp_freq = {c: st.session_state.get(f"wi_tp_{c}", 4) for c in ["Build","Defend","Gain","Maintain","Observe"]}
-st.divider()
-st.markdown('<h3 style="color:#042B0B;-webkit-text-fill-color:#042B0B;font-weight:bold;">Scenario Management.</h3>', unsafe_allow_html=True)
-sc1,sc2,sc3=st.columns(3)
-with sc1:
-    st.markdown('<p style="font-size:1.1rem;font-weight:700;color:#042B0B;-webkit-text-fill-color:#042B0B;margin:0 0 8px 0;">Save Current Scenario.</p>', unsafe_allow_html=True)
-    sn=st.text_input("Scenario name:",key="sc_name",placeholder="e.g. Option A")
-    if st.button("Save Scenario.") and sn:
-        _save_freq = wi_freq if wi_freq else freq
-        freq_desc = ", ".join([f"{c}: {_save_freq.get(c,4)}" for c in ["Build","Defend","Gain","Maintain"]])
-        # Try to save from actual scenario results (most accurate)
-        _save_summary = {}
-        _wi_scens = st.session_state.get("wi_scenarios", [])
-        if _wi_scens:
-            # Use first scenario's results (the one shown in the table)
-            _sc_res = _wi_scens[0]
-            for _rn, _r in _sc_res.get("results", {}).items():
-                _ph = _r.get("pharmacies", 0)
-                _vi = _r.get("visited", 0)  # already includes activated_obs
-                _vs = _r.get("visits", 0)
-                _cov = _r.get("coverage", round(_vi/_ph*100,1) if _ph>0 else 0)
-                _cap = _r.get("cap_pct", 0)
-                _save_summary[_rn] = {"Pharmacies":_ph,"Visited":_vi,"Visits":_vs,
-                                       "Coverage":_cov,"Cap%":f"{_cap}%"}
         else:
-            # Fallback: calculate from current pharmacy data
-            _pc_save = pharmacy_detail.copy()
-            _pc_save["_terr"] = _pc_save["Block_APO"].map(
-                dict(zip(block_df_original["Block_APO"], block_df_original["territory"])))
-            _visited_cvms = ["Build","Defend","Gain","Maintain"]
-            _pc_save["_vs"] = _pc_save.apply(
-                lambda r: (2 if r["Planned_Visits"]==2 else
-                           max(5, _save_freq.get(r["CVM_clean"],4)) if r["Planned_Visits"]==5 else
-                           _save_freq.get(r["CVM_clean"],4))
-                if r["CVM_clean"] in _visited_cvms else 0, axis=1)
-            for t in sorted(_pc_save["_terr"].dropna().unique()):
-                _tp = _pc_save[_pc_save["_terr"]==t]
-                _ph = len(_tp); _vi = int(_tp["CVM_clean"].isin(_visited_cvms).sum())
-                _vs = int(_tp["_vs"].sum()); _cov = round(_vi/_ph*100,1) if _ph>0 else 0
-                _rep = TERRITORY_TO_REP.get(t,"")
-                _cap_d = REP_CAPACITY.get(_rep,{"capacity":1435})["capacity"]
-                _cap = round(_vs/_cap_d*100,1) if _cap_d>0 else 0
-                _save_summary[_rep or t] = {"Pharmacies":_ph,"Visited":_vi,"Visits":_vs,
-                                             "Coverage":_cov,"Cap%":f"{_cap}%"}
-        st.session_state.saved_scenarios[sn] = {
-            "assignments": dict(st.session_state.assignments),
-            "freq": {k:int(v) for k,v in _save_freq.items()},
-            "tp_freq": {k:int(v) for k,v in (wi_tp_freq if wi_tp_freq else tp_freq).items()},
-            "freq_desc": freq_desc,
-            "summary": _save_summary}
-        st.success(f"Saved '{sn}' — {freq_desc} | Observe: {_save_freq.get('Observe',4)}")
-with sc2:
-    st.markdown('<p style="font-size:1.1rem;font-weight:700;color:#042B0B;-webkit-text-fill-color:#042B0B;margin:0 0 8px 0;">Export / Import.</p>', unsafe_allow_html=True)
-    if st.session_state.saved_scenarios:
-        es=st.selectbox("Export:",options=list(st.session_state.saved_scenarios.keys()),key="es")
-        if st.button("Export JSON"): st.download_button("Download",json.dumps(st.session_state.saved_scenarios[es],indent=2),f"{es}.json","application/json",key="dl_sc")
-    up=st.file_uploader("Import (JSON):",type=["json"],key="imp_sc")
-    if up:
-        try: st.session_state.saved_scenarios[up.name.replace(".json","")]=json.loads(up.read()); st.success(f"Imported '{up.name}'")
-        except Exception as e: st.error(f"Error: {e}")
-with sc3:
-    st.markdown('<p style="font-size:1.1rem;font-weight:700;color:#042B0B;-webkit-text-fill-color:#042B0B;margin:0 0 8px 0;">Load Scenario.</p>', unsafe_allow_html=True)
-    st.markdown('<span style="font-size:13px;color:#6D7F6E;font-style:italic;">Loads block assignments and visit frequencies from a saved scenario — the KPI table above will be updated.</span>', unsafe_allow_html=True)
-    if st.session_state.saved_scenarios:
-        ls=st.selectbox("Load:",options=list(st.session_state.saved_scenarios.keys()),key="ls")
-        if st.button("Load"):
-            sc=st.session_state.saved_scenarios[ls]
-            new_a = {}
-            for k,v in sc["assignments"].items():
-                # Store as both int and string to handle any GeoJSON key type
-                try:
-                    new_a[int(k)] = v
-                    new_a[str(int(k))] = v
-                except:
-                    new_a[k] = v
-            st.session_state.assignments = new_a
-            st.session_state["_pending_load_freq"] = sc["freq"]
-            st.session_state["_pending_load_tp_freq"] = sc.get("tp_freq", {})
-            st.session_state["_load_success_msg"] = ls
-            st.rerun()
-        if st.session_state.get("_last_loaded_msg"):
-            st.success(f"✓ Loaded '{st.session_state.pop('_last_loaded_msg')}' — scroll up to see updated KPI table.")
-    else: st.markdown('<p style="font-size:14px;color:#6D7F6E;font-style:italic;margin:8px 0;">No saved scenarios yet.</p>', unsafe_allow_html=True)
-if len(st.session_state.saved_scenarios)>=2:
-    st.markdown('<p style="font-size:1.1rem;font-weight:700;color:#042B0B;-webkit-text-fill-color:#042B0B;margin:0 0 8px 0;">Compare Scenarios.</p>', unsafe_allow_html=True)
-    cs=st.multiselect("Select scenarios:",options=list(st.session_state.saved_scenarios.keys()),key="cs")
-    if len(cs)>=2:
-        # Show scenario descriptions
-        for s in cs:
-            sc_meta = st.session_state.saved_scenarios[s]
-            _fd = sc_meta.get("freq_desc") or ", ".join([f"{c}: {sc_meta['freq'].get(c,4)}" for c in ["Build","Defend","Gain","Maintain"]])
-            st.markdown(f'**{s}:** {_fd} | Observe freq: {sc_meta["freq"].get("Observe",4)}')
-        # Recalculate summary from saved assignments for accurate comparison
-        # Use saved summary directly — it captures exact scenario table values
-        _recalc = {s: st.session_state.saved_scenarios[s]["summary"] for s in cs}
-        cols_compare = ["Visited","Coverage","Visits","Visits/Day","Cap%"]
-        ch3=f'<table style="width:100%;border-collapse:collapse;font-size:16px;"><tr style="background:{HDR_BG};color:white;"><th style="padding:6px;">Territory</th>'
-        for s in cs: ch3+=f'<th colspan="5" style="padding:6px;text-align:center;">{s}</th>'
-        ch3+='</tr><tr style="background:#F0E5D8;"><td></td>'
-        for s in cs:
-            for col in cols_compare: ch3+=f'<td style="padding:4px;text-align:center;font-weight:bold;">{col}</td>'
-        ch3+='</tr>'
-        at2=set()
-        for s in cs: at2.update(_recalc[s].keys())
-        tot = {s:{"Visited":0,"Visits":0,"Pharma":0,"Cap_v":0,"Cap_c":0} for s in cs}
-        for t in sorted(at2, key=lambda x: REP_ORDER.index(x) if x in REP_ORDER else 999):
-            ch3+=f'<tr style="border-bottom:1px solid #eee;"><td style="padding:4px;font-weight:bold;">{t}</td>'
+            st.markdown('<p style="color:#6D7F6E;font-size:14px;">Set parameters and click <b>Generate Scenarios</b> to see optimization results.</p>', unsafe_allow_html=True)
+
+    # SCENARIO MANAGEMENT
+    # Ensure wi_freq etc. have defaults if Coverage Optimisation hasn't been run
+    if "wi_freq" not in dir() or not wi_freq:
+        wi_freq = {c: st.session_state.get(f"wi_freq_{c}", 4) for c in ["Build","Defend","Gain","Maintain","Observe"]}
+    if "wi_tp_freq" not in dir() or not wi_tp_freq:
+        wi_tp_freq = {c: st.session_state.get(f"wi_tp_{c}", 4) for c in ["Build","Defend","Gain","Maintain","Observe"]}
+    st.divider()
+    st.markdown('<h3 style="color:#042B0B;-webkit-text-fill-color:#042B0B;font-weight:bold;">Scenario Management.</h3>', unsafe_allow_html=True)
+    sc1,sc2,sc3=st.columns(3)
+    with sc1:
+        st.markdown('<p style="font-size:1.1rem;font-weight:700;color:#042B0B;-webkit-text-fill-color:#042B0B;margin:0 0 8px 0;">Save Current Scenario.</p>', unsafe_allow_html=True)
+        sn=st.text_input("Scenario name:",key="sc_name",placeholder="e.g. Option A")
+        if st.button("Save Scenario.") and sn:
+            _save_freq = wi_freq if wi_freq else freq
+            freq_desc = ", ".join([f"{c}: {_save_freq.get(c,4)}" for c in ["Build","Defend","Gain","Maintain"]])
+            # Try to save from actual scenario results (most accurate)
+            _save_summary = {}
+            _wi_scens = st.session_state.get("wi_scenarios", [])
+            if _wi_scens:
+                # Use first scenario's results (the one shown in the table)
+                _sc_res = _wi_scens[0]
+                for _rn, _r in _sc_res.get("results", {}).items():
+                    _ph = _r.get("pharmacies", 0)
+                    _vi = _r.get("visited", 0)  # already includes activated_obs
+                    _vs = _r.get("visits", 0)
+                    _cov = _r.get("coverage", round(_vi/_ph*100,1) if _ph>0 else 0)
+                    _cap = _r.get("cap_pct", 0)
+                    _save_summary[_rn] = {"Pharmacies":_ph,"Visited":_vi,"Visits":_vs,
+                                           "Coverage":_cov,"Cap%":f"{_cap}%"}
+            else:
+                # Fallback: calculate from current pharmacy data
+                _pc_save = pharmacy_detail.copy()
+                _pc_save["_terr"] = _pc_save["Block_APO"].map(
+                    dict(zip(block_df_original["Block_APO"], block_df_original["territory"])))
+                _visited_cvms = ["Build","Defend","Gain","Maintain"]
+                _pc_save["_vs"] = _pc_save.apply(
+                    lambda r: (2 if r["Planned_Visits"]==2 else
+                               max(5, _save_freq.get(r["CVM_clean"],4)) if r["Planned_Visits"]==5 else
+                               _save_freq.get(r["CVM_clean"],4))
+                    if r["CVM_clean"] in _visited_cvms else 0, axis=1)
+                for t in sorted(_pc_save["_terr"].dropna().unique()):
+                    _tp = _pc_save[_pc_save["_terr"]==t]
+                    _ph = len(_tp); _vi = int(_tp["CVM_clean"].isin(_visited_cvms).sum())
+                    _vs = int(_tp["_vs"].sum()); _cov = round(_vi/_ph*100,1) if _ph>0 else 0
+                    _rep = TERRITORY_TO_REP.get(t,"")
+                    _cap_d = REP_CAPACITY.get(_rep,{"capacity":1435})["capacity"]
+                    _cap = round(_vs/_cap_d*100,1) if _cap_d>0 else 0
+                    _save_summary[_rep or t] = {"Pharmacies":_ph,"Visited":_vi,"Visits":_vs,
+                                                 "Coverage":_cov,"Cap%":f"{_cap}%"}
+            st.session_state.saved_scenarios[sn] = {
+                "assignments": dict(st.session_state.assignments),
+                "freq": {k:int(v) for k,v in _save_freq.items()},
+                "tp_freq": {k:int(v) for k,v in (wi_tp_freq if wi_tp_freq else tp_freq).items()},
+                "freq_desc": freq_desc,
+                "summary": _save_summary}
+            st.success(f"Saved '{sn}' — {freq_desc} | Observe: {_save_freq.get('Observe',4)}")
+    with sc2:
+        st.markdown('<p style="font-size:1.1rem;font-weight:700;color:#042B0B;-webkit-text-fill-color:#042B0B;margin:0 0 8px 0;">Export / Import.</p>', unsafe_allow_html=True)
+        if st.session_state.saved_scenarios:
+            es=st.selectbox("Export:",options=list(st.session_state.saved_scenarios.keys()),key="es")
+            if st.button("Export JSON"): st.download_button("Download",json.dumps(st.session_state.saved_scenarios[es],indent=2),f"{es}.json","application/json",key="dl_sc")
+        up=st.file_uploader("Import (JSON):",type=["json"],key="imp_sc")
+        if up:
+            try: st.session_state.saved_scenarios[up.name.replace(".json","")]=json.loads(up.read()); st.success(f"Imported '{up.name}'")
+            except Exception as e: st.error(f"Error: {e}")
+    with sc3:
+        st.markdown('<p style="font-size:1.1rem;font-weight:700;color:#042B0B;-webkit-text-fill-color:#042B0B;margin:0 0 8px 0;">Load Scenario.</p>', unsafe_allow_html=True)
+        st.markdown('<span style="font-size:13px;color:#6D7F6E;font-style:italic;">Loads block assignments and visit frequencies from a saved scenario — the KPI table above will be updated.</span>', unsafe_allow_html=True)
+        if st.session_state.saved_scenarios:
+            ls=st.selectbox("Load:",options=list(st.session_state.saved_scenarios.keys()),key="ls")
+            if st.button("Load"):
+                sc=st.session_state.saved_scenarios[ls]
+                new_a = {}
+                for k,v in sc["assignments"].items():
+                    # Store as both int and string to handle any GeoJSON key type
+                    try:
+                        new_a[int(k)] = v
+                        new_a[str(int(k))] = v
+                    except:
+                        new_a[k] = v
+                st.session_state.assignments = new_a
+                st.session_state["_pending_load_freq"] = sc["freq"]
+                st.session_state["_pending_load_tp_freq"] = sc.get("tp_freq", {})
+                st.session_state["_load_success_msg"] = ls
+                st.rerun()
+            if st.session_state.get("_last_loaded_msg"):
+                st.success(f"✓ Loaded '{st.session_state.pop('_last_loaded_msg')}' — scroll up to see updated KPI table.")
+        else: st.markdown('<p style="font-size:14px;color:#6D7F6E;font-style:italic;margin:8px 0;">No saved scenarios yet.</p>', unsafe_allow_html=True)
+    if len(st.session_state.saved_scenarios)>=2:
+        st.markdown('<p style="font-size:1.1rem;font-weight:700;color:#042B0B;-webkit-text-fill-color:#042B0B;margin:0 0 8px 0;">Compare Scenarios.</p>', unsafe_allow_html=True)
+        cs=st.multiselect("Select scenarios:",options=list(st.session_state.saved_scenarios.keys()),key="cs")
+        if len(cs)>=2:
+            # Show scenario descriptions
             for s in cs:
-                d=_recalc[s].get(t, st.session_state.saved_scenarios[s]["summary"].get(t,{}))
-                vi=d.get("Visited",0); ph=d.get("Pharmacies",0); vs=d.get("Visits",0)
-                cov=d.get("Coverage", round(vi/ph*100,1) if ph>0 else 0)
-                vpd=round(vs/205,1)
-                cap_raw=d.get("Cap%","—")
-                try: cap_val=float(str(cap_raw).replace("%","")); cap_str=f"{cap_val}%"; cap_cs="color:#e74c3c;font-weight:bold;" if cap_val>100 else ""
-                except: cap_val=0; cap_str="—"; cap_cs=""
-                ch3+=f'<td style="padding:4px;text-align:center;">{vi}</td><td style="padding:4px;text-align:center;">{cov}%</td><td style="padding:4px;text-align:center;">{vs:,}</td><td style="padding:4px;text-align:center;">{vpd}</td><td style="padding:4px;text-align:center;{cap_cs}">{cap_str}</td>'
-                tot[s]["Visited"]+=vi; tot[s]["Visits"]+=vs; tot[s]["Pharma"]+=ph
-                # t is rep name — look up capacity directly
-                if t == "NewRep":
-                    _t_cap = int(st.session_state.get("wi_vpd", 7) * 205)
-                elif t in REP_CAPACITY:
-                    _t_cap = REP_CAPACITY[t]["capacity"]
-                else:
-                    _t_cap = 0
-                if _t_cap > 0 and cap_val > 0:
-                    tot[s]["Cap_v"] += vs
-                    tot[s]["Cap_c"] += _t_cap
+                sc_meta = st.session_state.saved_scenarios[s]
+                _fd = sc_meta.get("freq_desc") or ", ".join([f"{c}: {sc_meta['freq'].get(c,4)}" for c in ["Build","Defend","Gain","Maintain"]])
+                st.markdown(f'**{s}:** {_fd} | Observe freq: {sc_meta["freq"].get("Observe",4)}')
+            # Recalculate summary from saved assignments for accurate comparison
+            # Use saved summary directly — it captures exact scenario table values
+            _recalc = {s: st.session_state.saved_scenarios[s]["summary"] for s in cs}
+            cols_compare = ["Visited","Coverage","Visits","Visits/Day","Cap%"]
+            ch3=f'<table style="width:100%;border-collapse:collapse;font-size:16px;"><tr style="background:{HDR_BG};color:white;"><th style="padding:6px;">Territory</th>'
+            for s in cs: ch3+=f'<th colspan="5" style="padding:6px;text-align:center;">{s}</th>'
+            ch3+='</tr><tr style="background:#F0E5D8;"><td></td>'
+            for s in cs:
+                for col in cols_compare: ch3+=f'<td style="padding:4px;text-align:center;font-weight:bold;">{col}</td>'
             ch3+='</tr>'
-        ch3+=f'<tr style="background:#F0E5D8;font-weight:bold;border-top:2px solid #6D7F6E;"><td style="padding:4px;">Total</td>'
-        for s in cs:
-            tv=tot[s]["Visited"]; tp2=tot[s]["Pharma"]; tvs=tot[s]["Visits"]
-            tc=round(tv/tp2*100,1) if tp2>0 else 0; tvpd=round(tvs/205,1)
-            tcap=round(tot[s]["Cap_v"]/tot[s]["Cap_c"]*100,1) if tot[s]["Cap_c"]>0 else 0
-            tcap_cs="color:#e74c3c;font-weight:bold;" if tcap>100 else ""
-            ch3+=f'<td style="padding:4px;text-align:center;">{tv}</td><td style="padding:4px;text-align:center;">{tc}%</td><td style="padding:4px;text-align:center;">{tvs:,}</td><td style="padding:4px;text-align:center;">{tvpd}</td><td style="padding:4px;text-align:center;{tcap_cs}">{tcap}%</td>'
-        ch3+='</tr></table>'; st.markdown(ch3, unsafe_allow_html=True)
+            at2=set()
+            for s in cs: at2.update(_recalc[s].keys())
+            tot = {s:{"Visited":0,"Visits":0,"Pharma":0,"Cap_v":0,"Cap_c":0} for s in cs}
+            for t in sorted(at2, key=lambda x: REP_ORDER.index(x) if x in REP_ORDER else 999):
+                ch3+=f'<tr style="border-bottom:1px solid #eee;"><td style="padding:4px;font-weight:bold;">{t}</td>'
+                for s in cs:
+                    d=_recalc[s].get(t, st.session_state.saved_scenarios[s]["summary"].get(t,{}))
+                    vi=d.get("Visited",0); ph=d.get("Pharmacies",0); vs=d.get("Visits",0)
+                    cov=d.get("Coverage", round(vi/ph*100,1) if ph>0 else 0)
+                    vpd=round(vs/205,1)
+                    cap_raw=d.get("Cap%","—")
+                    try: cap_val=float(str(cap_raw).replace("%","")); cap_str=f"{cap_val}%"; cap_cs="color:#e74c3c;font-weight:bold;" if cap_val>100 else ""
+                    except: cap_val=0; cap_str="—"; cap_cs=""
+                    ch3+=f'<td style="padding:4px;text-align:center;">{vi}</td><td style="padding:4px;text-align:center;">{cov}%</td><td style="padding:4px;text-align:center;">{vs:,}</td><td style="padding:4px;text-align:center;">{vpd}</td><td style="padding:4px;text-align:center;{cap_cs}">{cap_str}</td>'
+                    tot[s]["Visited"]+=vi; tot[s]["Visits"]+=vs; tot[s]["Pharma"]+=ph
+                    # t is rep name — look up capacity directly
+                    if t == "NewRep":
+                        _t_cap = int(st.session_state.get("wi_vpd", 7) * 205)
+                    elif t in REP_CAPACITY:
+                        _t_cap = REP_CAPACITY[t]["capacity"]
+                    else:
+                        _t_cap = 0
+                    if _t_cap > 0 and cap_val > 0:
+                        tot[s]["Cap_v"] += vs
+                        tot[s]["Cap_c"] += _t_cap
+                ch3+='</tr>'
+            ch3+=f'<tr style="background:#F0E5D8;font-weight:bold;border-top:2px solid #6D7F6E;"><td style="padding:4px;">Total</td>'
+            for s in cs:
+                tv=tot[s]["Visited"]; tp2=tot[s]["Pharma"]; tvs=tot[s]["Visits"]
+                tc=round(tv/tp2*100,1) if tp2>0 else 0; tvpd=round(tvs/205,1)
+                tcap=round(tot[s]["Cap_v"]/tot[s]["Cap_c"]*100,1) if tot[s]["Cap_c"]>0 else 0
+                tcap_cs="color:#e74c3c;font-weight:bold;" if tcap>100 else ""
+                ch3+=f'<td style="padding:4px;text-align:center;">{tv}</td><td style="padding:4px;text-align:center;">{tc}%</td><td style="padding:4px;text-align:center;">{tvs:,}</td><td style="padding:4px;text-align:center;">{tvpd}</td><td style="padding:4px;text-align:center;{tcap_cs}">{tcap}%</td>'
+            ch3+='</tr></table>'; st.markdown(ch3, unsafe_allow_html=True)
+
+st.divider()
+
+_sec_cvm = st.session_state.get("sec_cvm", False)
+_arr_cvm = "▼" if _sec_cvm else "▶"
+_desc_color__sec_cvm = "#263F26" if _sec_cvm else "#6D7F6E"
+st.markdown(f'<div style="background:{_desc_color__sec_cvm};border-radius:10px;padding:10px 16px;margin:4px 0 4px 0;width:fit-content;max-width:100%;font-size:13px;color:#F7EFE6;line-height:1.6;">Summary of pharmacies, visits, and sales by CVM category across all territories.</div>', unsafe_allow_html=True)
+if st.button(f"{_arr_cvm}  CVM KPIs.", key="_btn_sec_cvm"):
+    st.session_state["sec_cvm"] = not _sec_cvm; st.rerun()
+if _sec_cvm:
+    cfr = st.multiselect("Filter by Sales Rep:",options=["All"]+sorted(pharmacy_detail["Sales_Rep"].unique().tolist()),default=["All"],key="cvm_rep_filter")
+    pf = pharma_current if "All" in cfr or not cfr else pharma_current[pharma_current["Sales_Rep"].isin(cfr)]
+    CVM_COLS = CVM_CATEGORIES+["Observe","Total"]
+    tpa=len(pf); tva=int(pf["Planned_Visits"].sum()); tsa=pf["FY2025"].sum()
+    ctd={}
+    for cvm in CVM_COLS:
+        ss = pf if cvm=="Total" else pf[pf["CVM_clean"]==cvm]
+        np2=len(ss); nt=int(ss["Top_Priority"].sum()); tv=int(ss["Planned_Visits"].sum())
+        vpd=round(tv/WORKING_DAYS,1); ts=ss["FY2025"].sum(); avs=round(ts/np2,0) if np2>0 else 0
+        sp=round(np2/tpa*100,1) if tpa>0 else 0; sv=round(tv/tva*100,1) if tva>0 else 0; ss2=round(ts/tsa*100,1) if tsa>0 else 0
+        nv=ss[ss["CVM_clean"].isin(visited_cvms)].shape[0]; cov=round(nv/np2*100,1) if np2>0 else 0
+        ctd[cvm]={"Number of Pharmacies":np2,"Share of Pharmacies %":sp,"Top Priority Pharmacies*":nt,"Visits":tv,"Visits/Day":vpd,"Share of Visits %":sv,"Net Sales 2025":f"{ts:,.0f}","Avg Sales/Pharmacy":f"{avs:,.0f}","Share in Total Sales %":ss2}
+    ch2=f'<table style="width:100%;border-collapse:collapse;font-size:15px;"><tr style="background:{HDR_BG};color:#F7EFE6;"><th style="padding:8px;text-align:left;">Metric</th>'
+    for cvm in CVM_COLS: ch2+=f'<th style="padding:8px;text-align:center;">{cvm}</th>'
+    ch2+='</tr>'
+    for mt in ctd["Build"].keys():
+        ch2+=f'<tr style="border-bottom:1px solid #eee;"><td style="padding:4px;font-weight:bold;">{mt}</td>'
+        for cvm in CVM_COLS:
+            s="font-weight:bold;" if cvm=="Total" else ""; ch2+=f'<td style="padding:4px;text-align:center;{s}">{ctd[cvm][mt]}</td>'
+        ch2+='</tr>'
+    ch2+='</table>'; st.markdown(ch2, unsafe_allow_html=True)
+    st.markdown('<p style="font-size:13px;color:#6D7F6E;margin-top:4px;font-style:italic;">*Pharmacies that generated 50% of Net Sales in 2025.</p>', unsafe_allow_html=True)
+
+
+st.divider()
+
+_sec_block_details = st.session_state.get("sec_block_details", False)
+_arr_block_details = "▼" if _sec_block_details else "▶"
+_desc_color__sec_block_details = "#263F26" if _sec_block_details else "#6D7F6E"
+st.markdown(f'<div style="background:{_desc_color__sec_block_details};border-radius:10px;padding:10px 16px;margin:4px 0 4px 0;width:fit-content;max-width:100%;font-size:13px;color:#F7EFE6;line-height:1.6;">Detailed view of all IQVIA blocks with pharmacy counts and total Net Sales 2025.</div>', unsafe_allow_html=True)
+if st.button(f"{_arr_block_details}  Block Details.", key="_btn_sec_block_details"):
+    st.session_state["sec_block_details"] = not _sec_block_details; st.rerun()
+if _sec_block_details:
+    bm = pharma_current.groupby("Block_APO").agg(territory=("current_territory","first"),plz_count=("PLZ","nunique"),pharmacies=("EAN","count"),
+        visited=("CVM_clean",lambda x:x.isin(visited_cvms).sum()),top_pharmacies=("Top_Priority","sum"),visits=("Planned_Visits","sum"),total_sales=("FY2025","sum")).reset_index()
+    bm["coverage"]=(bm["visited"]/bm["pharmacies"]*100).round(1); bm["vpd"]=(bm["visits"]/WORKING_DAYS).round(1)
+    bm["spp"]=(bm["total_sales"]/bm["plz_count"]).round(0); bm["spa"]=(bm["total_sales"]/bm["pharmacies"]).round(0)
+    bm["ss"]=(bm["total_sales"]/bm["total_sales"].sum()*100).round(2); bm["rep"]=bm["territory"].map(TERRITORY_TO_REP).fillna(bm["territory"])
+    bm=bm.merge(block_centroids,on="Block_APO",how="left")
+    def cd2(row):
+        h=REP_HOME.get(row.get("rep",""))
+        if h and pd.notna(row.get("lat")): return round(haversine_km(h["lat"],h["lng"],row["lat"],row["lng"]),1)
+        return None
+    bm["distance_km"]=bm.apply(cd2,axis=1)
+    bf1,bf2=st.columns([1,3])
+    with bf1: btf=st.selectbox("Filter by territory:",options=["All"]+sorted_territories,key="btf")
+    with bf2:
+        fb=bm if btf=="All" else bm[bm["territory"]==btf]
+        sb2=st.selectbox("Search block:",options=["Top 10 by Sales"]+sorted(fb["Block_APO"].tolist()),key="bs")
+    db=fb.nlargest(10,"total_sales") if sb2=="Top 10 by Sales" else bm[bm["Block_APO"]==sb2]
+    for _,br in db.iterrows():
+        ds=f" · 📍 {br['distance_km']} km" if pd.notna(br.get("distance_km")) else ""
+        with st.expander(f"Block {br['Block_APO']} — {br['rep'].split()[0]} ({br['territory']}) — {int(br['pharmacies'])} ph. — {br['total_sales']:,.0f} sales{ds}"):
+            st.markdown(f"**PLZ:** {int(br['plz_count'])} · **Pharmacies:** {int(br['pharmacies'])} · **Visited:** {int(br['visited'])} · **Coverage:** {br['coverage']}%<br>**Top Pharmacies:** {int(br['top_pharmacies'])} · **Visits:** {int(br['visits'])}<br>**Net Sales 2025:** {br['total_sales']:,.0f} · **Sales/PLZ:** {br['spp']:,.0f} · **Sales/Pharmacy:** {br['spa']:,.0f} · **Share:** {br['ss']}%", unsafe_allow_html=True)
+            bp=pharma_current[pharma_current["Block_APO"]==br["Block_APO"]]
+            pm=bp.groupby("PLZ").agg(pharmacies=("EAN","count"),visited=("CVM_clean",lambda x:x.isin(visited_cvms).sum()),top=("Top_Priority","sum"),visits=("Planned_Visits","sum"),sales=("FY2025","sum")).reset_index()
+            pm["coverage"]=(pm["visited"]/pm["pharmacies"]*100).round(1); pm["vpd"]=(pm["visits"]/WORKING_DAYS).round(1); pm=pm.sort_values("sales",ascending=False)
+            for _,pr in pm.iterrows():
+                with st.expander(f"    PLZ {int(pr['PLZ'])} — {int(pr['pharmacies'])} ph. — {pr['sales']:,.0f} sales"):
+                    st.markdown(f"**Pharmacies:** {int(pr['pharmacies'])} · **Visited:** {int(pr['visited'])} · **Coverage:** {pr['coverage']}% · **Top:** {int(pr['top'])}", unsafe_allow_html=True)
+                    for _,ph in bp[bp["PLZ"]==pr["PLZ"]].sort_values("FY2025",ascending=False).iterrows():
+                        ts2="⭐ " if ph["Top_Priority"]==1 else ""
+                        st.markdown(f"&nbsp;&nbsp;&nbsp;&nbsp;{ts2}**{ph['Name']}** — {ph['CVM_clean']} — {ph['FY2025']:,.0f} sales", unsafe_allow_html=True)
+
+
+st.divider()
+
+_sec_observe = st.session_state.get("sec_observe", False)
+_arr_observe = "▼" if _sec_observe else "▶"
+_desc_color__sec_observe = "#263F26" if _sec_observe else "#6D7F6E"
+st.markdown(f'<div style="background:{_desc_color__sec_observe};border-radius:10px;padding:10px 16px;margin:4px 0 4px 0;width:fit-content;max-width:100%;font-size:13px;color:#F7EFE6;line-height:1.6;">Top Observe pharmacies ranked by Net Sales 2025 — not currently in the call plan.</div>', unsafe_allow_html=True)
+if st.button(f"{_arr_observe}  Observe Pharmacies.", key="_btn_sec_observe"):
+    st.session_state["sec_observe"] = not _sec_observe; st.rerun()
+if _sec_observe:
+    obs=pharma_current[pharma_current["CVM_clean"]=="Observe"].copy().sort_values("FY2025",ascending=False)
+    obs["current_territory"]=obs["current_territory"].fillna("Unknown")
+    no=pharma_current[pharma_current["CVM_clean"]!="Observe"]
+    pla=no.groupby("PLZ")["FY2025"].mean().round(0).to_dict()
+    plc=pharma_current.groupby("PLZ")["EAN"].count().to_dict()
+    obs["PLZ_Avg_Sales"]=obs["PLZ"].map(pla).fillna(0)
+    obs["PLZ_Pharma_Count"]=obs["PLZ"].map(plc).fillna(0).astype(int)
+    st.markdown(f'**{len(obs)} Observe pharmacies** with total sales of **{obs["FY2025"].sum():,.0f}** — not currently visited.')
+    to2=obs.head(20)
+    if len(to2)>0:
+        oh=f'<table style="width:100%;border-collapse:collapse;font-size:15px;"><tr style="background:{HDR_BG};color:#F7EFE6;">'
+        for c in ["Rank","Name","PLZ","Ort","Block","Sales Rep","Net Sales 2025","PLZ Avg Sales","PLZ # Pharm."]:
+            oh+=f'<th style="padding:8px;text-align:center;">{c}</th>'
+        oh+='</tr>'
+        for i,(_,r) in enumerate(to2.iterrows()):
+            oh+=f'<tr style="border-bottom:1px solid #eee;"><td style="padding:4px;text-align:center;">{i+1}</td><td style="padding:4px;">{r["Name"]}</td><td style="padding:4px;text-align:center;">{int(r["PLZ"])}</td><td style="padding:4px;">{r["Ort"]}</td><td style="padding:4px;text-align:center;">{int(r["Block_APO"])}</td><td style="padding:4px;text-align:center;">{r["Sales_Rep"]}</td><td style="padding:4px;text-align:center;">{r["FY2025"]:,.0f}</td><td style="padding:4px;text-align:center;">{r["PLZ_Avg_Sales"]:,.0f}</td><td style="padding:4px;text-align:center;">{r["PLZ_Pharma_Count"]}</td></tr>'
+        oh+='</table>'; st.markdown(oh, unsafe_allow_html=True)
+
+
+
+st.divider()
+_sec_distance = st.session_state.get("sec_distance", False)
+_arr_distance = "▼" if _sec_distance else "▶"
+_desc_color__sec_distance = "#263F26" if _sec_distance else "#6D7F6E"
+st.markdown(f'<div style="background:{_desc_color__sec_distance};border-radius:10px;padding:10px 16px;margin:4px 0 4px 0;width:fit-content;max-width:100%;font-size:13px;color:#F7EFE6;line-height:1.6;">Estimate straight-line travel distances between two points.</div>', unsafe_allow_html=True)
+if st.button(f"{_arr_distance}  Distance Calculator.", key="_btn_sec_distance"):
+    st.session_state["sec_distance"] = not _sec_distance; st.rerun()
+if _sec_distance:
+    dc1,dc2,dc3 = st.columns([1,1,1])
+    bc_dict = dict(zip(block_centroids["Block_APO"], zip(block_centroids["lat"],block_centroids["lng"])))
+    from_options = list(REP_HOME.keys()) + sorted(block_centroids["Block_APO"].tolist())
+    with dc1:
+        fr = st.selectbox("From:", options=from_options, key="dist_from", format_func=lambda x: f"🏠 {x}" if x in REP_HOME else f"Block {x}")
+    with dc2:
+        to = st.selectbox("To:", options=from_options, key="dist_to", format_func=lambda x: f"🏠 {x}" if x in REP_HOME else f"Block {x}")
+    with dc3:
+        def get_coords(x):
+            if x in REP_HOME: return REP_HOME[x]["lat"], REP_HOME[x]["lng"]
+            if x in bc_dict: return bc_dict[x]
+            return None, None
+        lat1,lng1 = get_coords(fr); lat2,lng2 = get_coords(to)
+        if lat1 and lat2:
+            dist = round(haversine_km(lat1,lng1,lat2,lng2),1)
+            fr_label = f"🏠 {fr}" if fr in REP_HOME else f"Block {fr}"
+            to_label = f"🏠 {to}" if to in REP_HOME else f"Block {to}"
+            st.markdown(f'<div style="padding:16px;background:#F0E5D8;border-radius:6px;margin-top:24px;"><strong style="font-size:20px;">{dist} km</strong><br>{fr_label} → {to_label}</div>', unsafe_allow_html=True)
+
