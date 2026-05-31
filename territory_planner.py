@@ -8,6 +8,7 @@ from copy import deepcopy
 import base64
 from math import radians, sin, cos, sqrt, atan2
 from io import BytesIO
+from collections import defaultdict
 
 st.set_page_config(page_title="Switzerland Territory Alignment", layout="wide", initial_sidebar_state="collapsed")
 
@@ -128,52 +129,36 @@ st.markdown(f"""
 
 _load_msg = st.session_state.pop("_load_success_msg", None)
 if _load_msg: st.session_state["_last_loaded_msg"] = _load_msg
-st.markdown("""
+# Card highlight colors based on open state
+_CARD_ACTIVE = "#3d6b3d"
+_CARD_INACTIVE = "#263F26"
+_c_territory    = _CARD_ACTIVE if st.session_state.get("sec_territory", False) else _CARD_INACTIVE
+_c_visit_freq   = _CARD_ACTIVE if st.session_state.get("sec_visit_freq", False) else _CARD_INACTIVE
+_c_coverage     = _CARD_ACTIVE if st.session_state.get("sec_coverage", False) else _CARD_INACTIVE
+_c_cvm          = _CARD_ACTIVE if st.session_state.get("sec_cvm", False) else _CARD_INACTIVE
+_c_block_details= _CARD_ACTIVE if st.session_state.get("sec_block_details", False) else _CARD_INACTIVE
+_c_observe      = _CARD_ACTIVE if st.session_state.get("sec_observe", False) else _CARD_INACTIVE
+_c_distance     = _CARD_ACTIVE if st.session_state.get("sec_distance", False) else _CARD_INACTIVE
+
+st.markdown(f"""
 <p style="font-size:25px;font-weight:700;color:#042B0B;margin:0 0 10px 0;">Welcome to the Switzerland Territory Alignment Tool.</p>
-<div style="display:flex;gap:20px;flex-wrap:wrap;align-items:flex-start;margin-bottom:10px;">
+<div style="display:flex;gap:16px;flex-wrap:nowrap;align-items:flex-end;margin-bottom:10px;overflow-x:auto;padding-bottom:6px;">
   <div>
-    <p style="font-size:17px;color:#3D553E;margin:0 0 6px 0;font-weight:600;">What you can do:</p>
-    <div style="display:flex;gap:10px;flex-wrap:wrap;">
-      <a href="#adjusting-territory-boundaries" style="text-decoration:none;">
-        <div style="background:#263F26;border-radius:10px;padding:14px 16px 10px 16px;width:230px;height:110px;position:relative;">
-          <div style="font-size:18px;font-weight:700;color:#F7EFE6;line-height:1.4;padding-bottom:28px;">Adjust territory boundaries.</div>
-          <div style="font-size:12px;color:#c8d8c8;position:absolute;bottom:12px;left:16px;right:16px;">Move blocks between Reps. →</div>
-        </div></a>
-      <a href="#visit-frequency-scenario" style="text-decoration:none;">
-        <div style="background:#263F26;border-radius:10px;padding:14px 16px 10px 16px;width:230px;height:110px;position:relative;">
-          <div style="font-size:18px;font-weight:700;color:#F7EFE6;line-height:1.4;padding-bottom:28px;">Model visit frequency scenarios.</div>
-          <div style="font-size:12px;color:#c8d8c8;position:absolute;bottom:12px;left:16px;right:16px;">Adjust CVM visit frequencies. →</div>
-        </div></a>
-      <a href="#coverage-optimisation" style="text-decoration:none;">
-        <div style="background:#263F26;border-radius:10px;padding:14px 16px 10px 16px;width:230px;height:110px;position:relative;">
-          <div style="font-size:18px;font-weight:700;color:#F7EFE6;line-height:1.4;padding-bottom:28px;">Optimise coverage.</div>
-          <div style="font-size:12px;color:#c8d8c8;position:absolute;bottom:12px;left:16px;right:16px;">Add a Rep &amp; increase coverage. →</div>
-        </div></a>
+    <p style="font-size:13px;font-weight:600;color:#3D553E;margin:0 0 6px 0;">What you can do:</p>
+    <div style="display:flex;gap:8px;flex-wrap:nowrap;">
+      <a target="_self" href="?open=territory" style="text-decoration:none;"><div style="background:{_c_territory};border-radius:10px;padding:14px 16px 10px 16px;width:260px;height:130px;position:relative;"><div style="font-size:20px;font-weight:700;color:#F7EFE6;line-height:1.4;padding-bottom:24px;">Adjust territory boundaries.</div><div style="font-size:13px;color:#c8d8c8;position:absolute;bottom:10px;left:14px;right:14px;">Move blocks between Reps. →</div></div></a>
+      <a target="_self" href="?open=visit_freq" style="text-decoration:none;"><div style="background:{_c_visit_freq};border-radius:10px;padding:14px 16px 10px 16px;width:260px;height:130px;position:relative;"><div style="font-size:20px;font-weight:700;color:#F7EFE6;line-height:1.4;padding-bottom:24px;">Model visit frequency scenarios.</div><div style="font-size:13px;color:#c8d8c8;position:absolute;bottom:10px;left:14px;right:14px;">Adjust CVM visit frequencies. →</div></div></a>
+      <a target="_self" href="?open=coverage" style="text-decoration:none;"><div style="background:{_c_coverage};border-radius:10px;padding:14px 16px 10px 16px;width:260px;height:130px;position:relative;"><div style="font-size:20px;font-weight:700;color:#F7EFE6;line-height:1.4;padding-bottom:24px;">Optimise coverage.</div><div style="font-size:13px;color:#c8d8c8;position:absolute;bottom:10px;left:14px;right:14px;">Add a Rep &amp; increase coverage. →</div></div></a>
     </div>
   </div>
-  <div style="border-left:2px solid #b8c8a8;padding-left:16px;">
-    <p style="font-size:17px;color:#3D553E;margin:0 0 6px 0;font-weight:600;">Analyse:</p>
-    <div style="display:flex;gap:10px;flex-wrap:wrap;">
-      <a href="#cvm-overview" style="text-decoration:none;">
-        <div style="background:#263F26;border-radius:10px;padding:14px 16px 10px 16px;width:230px;height:110px;position:relative;">
-          <div style="font-size:18px;font-weight:700;color:#F7EFE6;line-height:1.4;padding-bottom:28px;">CVM KPIs.</div>
-          <div style="font-size:12px;color:#c8d8c8;position:absolute;bottom:12px;left:16px;right:16px;">Main metrics per CVM. →</div>
-        </div></a>
-      <a href="#block-details" style="text-decoration:none;">
-        <div style="background:#263F26;border-radius:10px;padding:14px 16px 10px 16px;width:230px;height:110px;position:relative;">
-          <div style="font-size:18px;font-weight:700;color:#F7EFE6;line-height:1.4;padding-bottom:28px;">IQVIA Blocks.</div>
-          <div style="font-size:12px;color:#c8d8c8;position:absolute;bottom:12px;left:16px;right:16px;">Block-level detail view. →</div>
-        </div></a>
-      <a href="#observe-pharmacies" style="text-decoration:none;">
-        <div style="background:#263F26;border-radius:10px;padding:14px 16px 10px 16px;width:230px;height:110px;position:relative;">
-          <div style="font-size:18px;font-weight:700;color:#F7EFE6;line-height:1.4;padding-bottom:28px;">Top Observe Pharmacies.</div>
-          <div style="font-size:12px;color:#c8d8c8;position:absolute;bottom:12px;left:16px;right:16px;">Coverage expansion targets. →</div>
-        </div></a>
-      <a href="#distance-calculator" style="text-decoration:none;">
-        <div style="background:#263F26;border-radius:10px;padding:14px 16px 10px 16px;width:230px;height:110px;position:relative;">
-          <div style="font-size:18px;font-weight:700;color:#F7EFE6;line-height:1.4;padding-bottom:28px;">Distance between Blocks.</div>
-          <div style="font-size:12px;color:#c8d8c8;position:absolute;bottom:12px;left:16px;right:16px;">Travel distance check. →</div>
-        </div></a>
+  <div style="width:2px;background:#b8c8a8;align-self:stretch;margin:0 4px;flex-shrink:0;"></div>
+  <div>
+    <p style="font-size:13px;font-weight:600;color:#3D553E;margin:0 0 6px 0;">Analyse:</p>
+    <div style="display:flex;gap:8px;flex-wrap:nowrap;">
+      <a target="_self" href="?open=cvm" style="text-decoration:none;"><div style="background:{_c_cvm};border-radius:10px;padding:14px 16px 10px 16px;width:260px;height:130px;position:relative;"><div style="font-size:20px;font-weight:700;color:#F7EFE6;line-height:1.4;padding-bottom:24px;">CVM KPIs.</div><div style="font-size:13px;color:#c8d8c8;position:absolute;bottom:10px;left:14px;right:14px;">Main metrics per CVM. →</div></div></a>
+      <a target="_self" href="?open=block_details" style="text-decoration:none;"><div style="background:{_c_block_details};border-radius:10px;padding:14px 16px 10px 16px;width:260px;height:130px;position:relative;"><div style="font-size:20px;font-weight:700;color:#F7EFE6;line-height:1.4;padding-bottom:24px;">IQVIA Blocks.</div><div style="font-size:13px;color:#c8d8c8;position:absolute;bottom:10px;left:14px;right:14px;">Block-level detail view. →</div></div></a>
+      <a target="_self" href="?open=observe" style="text-decoration:none;"><div style="background:{_c_observe};border-radius:10px;padding:14px 16px 10px 16px;width:260px;height:130px;position:relative;"><div style="font-size:20px;font-weight:700;color:#F7EFE6;line-height:1.4;padding-bottom:24px;">Top Observe Pharmacies.</div><div style="font-size:13px;color:#c8d8c8;position:absolute;bottom:10px;left:14px;right:14px;">Coverage expansion targets. →</div></div></a>
+      <a target="_self" href="?open=distance" style="text-decoration:none;"><div style="background:{_c_distance};border-radius:10px;padding:14px 16px 10px 16px;width:260px;height:130px;position:relative;"><div style="font-size:20px;font-weight:700;color:#F7EFE6;line-height:1.4;padding-bottom:24px;">Distance between Blocks.</div><div style="font-size:13px;color:#c8d8c8;position:absolute;bottom:10px;left:14px;right:14px;">Travel distance check. →</div></div></a>
     </div>
   </div>
 </div>
@@ -272,6 +257,36 @@ def load_geojson():
 def load_csv(p): return pd.read_csv(p)
 
 geojson_data = load_geojson()
+
+# Build block adjacency map: two blocks are neighbors if they share a border vertex
+@st.cache_data
+def build_block_adjacency(geojson):
+    """Two blocks are adjacent if they share at least one coordinate (rounded to 4dp)."""
+    coord_to_blocks = defaultdict(set)
+    block_coords = {}
+    for feat in geojson["features"]:
+        bid = feat["properties"].get("IQVIA_BLOCK_APO", feat["properties"].get("Block_APO", None))
+        if bid is None: continue
+        bid = int(bid)
+        geom = feat["geometry"]
+        coords = set()
+        polys = [geom["coordinates"]] if geom["type"] == "Polygon" else geom["coordinates"]
+        for poly in polys:
+            for ring in poly:
+                for pt in ring:
+                    c = (round(pt[0], 4), round(pt[1], 4))
+                    coords.add(c)
+                    coord_to_blocks[c].add(bid)
+        block_coords[bid] = coords
+    adjacency = defaultdict(set)
+    for c, blocks in coord_to_blocks.items():
+        for b1 in blocks:
+            for b2 in blocks:
+                if b1 != b2:
+                    adjacency[b1].add(b2)
+    return dict(adjacency)
+
+block_adjacency = build_block_adjacency(geojson_data)
 block_df_original = load_csv("block_data.csv")
 block_df_original["territory"] = block_df_original["territory"].str.replace("ZG CITY-AG","ZH CITY-AG",regex=False)
 block_df = block_df_original.copy()
@@ -311,11 +326,40 @@ if "loaded_scenario_results" not in st.session_state:
 for key, val in [("assignments", dict(zip(block_df_original["Block_APO"], block_df_original["territory"]))),
     ("custom_territories", {}), ("tp_explicit", {c: False for c in CVM_CATEGORIES}),
     ("prev_cvm_freq", {c: 4 for c in CVM_CATEGORIES}), ("tp_freq_values", {c: 4 for c in CVM_CATEGORIES}),
-    ("selected_blocks_list", []), ("saved_scenarios", {}), ("undo_stack", []), ("freq_applied", False),
+    ("selected_blocks_list", []), ("saved_scenarios", {}), ("undo_stack", []), ("freq_applied", False), ("wi_scenarios_frozen", False),
     ("sec_territory", False), ("sec_cvm", False), ("sec_visit_freq", False), ("sec_distance", False),
     ("sec_block_details", False), ("sec_observe", False), ("sec_coverage", False)]:
     if key not in st.session_state: st.session_state[key] = val
 
+
+# ── Query param → auto-open section ───────────────────────────────────────────
+_qp_open = st.query_params.get("open", None)
+_sec_map = {
+    "territory":    "sec_territory",
+    "visit_freq":   "sec_visit_freq",
+    "coverage":     "sec_coverage",
+    "cvm":          "sec_cvm",
+    "block_details":"sec_block_details",
+    "observe":      "sec_observe",
+    "distance":     "sec_distance",
+}
+# Map section keys to scroll target button keys (Streamlit renders buttons with these keys)
+_scroll_map = {
+    "territory":    "_btn_sec_territory",
+    "visit_freq":   "_btn_sec_visit_freq",
+    "coverage":     "_btn_sec_coverage",
+    "cvm":          "_btn_sec_cvm",
+    "block_details":"_btn_sec_block_details",
+    "observe":      "_btn_sec_observe",
+    "distance":     "_btn_sec_distance",
+}
+if _qp_open and _qp_open in _sec_map:
+    _sec_key = _sec_map[_qp_open]
+    if not st.session_state.get(_sec_key, False):
+        st.session_state[_sec_key] = True
+    st.session_state["_scroll_to"] = _scroll_map.get(_qp_open)
+    st.query_params.clear()  # clear so back-button works cleanly
+# ──────────────────────────────────────────────────────────────────────────────
 TERRITORY_COLORS.update(st.session_state.custom_territories)
 assignments = st.session_state.assignments
 block_df = block_df_original.copy()
@@ -546,10 +590,7 @@ with col_kpi:
 
 # Pharma data for tables
 pharma_current = pharmacy_detail.copy()
-if st.session_state.loaded_scenario_results:
-    _table_terr_map = dict(zip(block_df_original["Block_APO"], block_df_original["territory"]))
-else:
-    _table_terr_map = dict(zip(block_df["Block_APO"], block_df["territory"]))
+_table_terr_map = dict(zip(block_df["Block_APO"], block_df["territory"]))
 pharma_current["current_territory"]=pharma_current["Block_APO"].map(_table_terr_map)
 visited_cvms = ["Build","Defend","Gain","Maintain"]
 
@@ -557,11 +598,21 @@ visited_cvms = ["Build","Defend","Gain","Maintain"]
 st.divider()
 
 _sec_visit_freq = st.session_state.get("sec_visit_freq", False)
+_sec_coverage = st.session_state.get("sec_coverage", False)
 _arr_visit_freq = "▼" if _sec_visit_freq else "▶"
+_arr_coverage = "▼" if _sec_coverage else "▶"
 _desc_color__sec_visit_freq = "#263F26" if _sec_visit_freq else "#6D7F6E"
-st.markdown(f'<div style="background:{_desc_color__sec_visit_freq};border-radius:10px;padding:10px 16px;margin:4px 0 4px 0;width:fit-content;max-width:100%;font-size:13px;color:#F7EFE6;line-height:1.6;">Model how changing visit frequencies per CVM affects Total Visits and Reps capacity.</div>', unsafe_allow_html=True)
-if st.button(f"{_arr_visit_freq}  Visit Frequency Scenario.", key="_btn_sec_visit_freq"):
-    st.session_state["sec_visit_freq"] = not _sec_visit_freq; st.rerun()
+_dc_coverage = "#263F26" if _sec_coverage else "#6D7F6E"
+
+_hdr_col1, _hdr_col2 = st.columns(2)
+with _hdr_col1:
+    st.markdown(f'<div style="background:{_desc_color__sec_visit_freq};border-radius:10px;padding:10px 16px;margin:4px 0 4px 0;width:fit-content;max-width:100%;font-size:13px;color:#F7EFE6;line-height:1.6;">Model how changing visit frequencies per CVM affects Total Visits and Reps capacity.</div>', unsafe_allow_html=True)
+    if st.button(f"{_arr_visit_freq}  Visit Frequency Scenario.", key="_btn_sec_visit_freq"):
+        st.session_state["sec_visit_freq"] = not _sec_visit_freq; st.rerun()
+with _hdr_col2:
+    st.markdown(f'<div style="background:{_dc_coverage};border-radius:10px;padding:10px 16px;margin:4px 0 4px 0;width:fit-content;max-width:100%;font-size:13px;color:#F7EFE6;line-height:1.6;">Redistribute blocks to increase coverage while keeping capacity balanced.</div>', unsafe_allow_html=True)
+    if st.button(f"{_arr_coverage}  Coverage Optimisation.", key="_btn_sec_coverage"):
+        st.session_state["sec_coverage"] = not _sec_coverage; st.rerun()
 if _sec_visit_freq:
     fc1,fc2 = st.columns([1,3])
     with fc1:
@@ -971,14 +1022,7 @@ if _sec_visit_freq:
         st.markdown(html, unsafe_allow_html=True)
 
 
-st.divider()
-
-_sec_coverage = st.session_state.get("sec_coverage", False)
-_arr_coverage = "▼" if _sec_coverage else "▶"
-_dc_coverage = "#263F26" if _sec_coverage else "#6D7F6E"
-st.markdown(f'<div style="background:{_dc_coverage};border-radius:10px;padding:10px 16px;margin:4px 0 4px 0;width:fit-content;max-width:100%;font-size:13px;color:#F7EFE6;line-height:1.6;">Redistribute blocks to increase coverage while keeping capacity balanced.</div>', unsafe_allow_html=True)
-if st.button(f"{_arr_coverage}  Coverage Optimisation.", key="_btn_sec_coverage"):
-    st.session_state["sec_coverage"] = not _sec_coverage; st.rerun()
+# (Coverage Optimisation header moved above alongside Visit Frequency)
 if _sec_coverage:
     wi1,wi2=st.columns([1,2])
     with wi1:
@@ -987,7 +1031,7 @@ if _sec_coverage:
         current_cov = round(total_visited/total_pharma*100,1) if total_pharma>0 else 0
         st.markdown(f"**Current coverage: {current_cov}%** ({total_visited}/{total_pharma})")
         _wc1, _wc2 = st.columns([1,1])
-        with _wc1: wi_target = st.number_input("Target coverage %:",min_value=50.0,max_value=100.0,value=85.0,step=1.0,key="wi_tgt")
+        with _wc1: wi_target = st.number_input("Target coverage %:",min_value=50.0,max_value=100.0,value=75.0,step=1.0,key="wi_tgt")
         _no_new_rep_early = st.session_state.get("wi_no_new_rep", False)
         if not _no_new_rep_early:
             with _wc1: wi_vpd = st.number_input("New Rep Visits/Day:",min_value=1.0,max_value=15.0,value=7.0,step=0.5,key="wi_vpd")
@@ -1058,18 +1102,18 @@ if _sec_coverage:
         wi_no_new_rep = st.checkbox("Do not add New Rep (optimise with current 6 reps only)", value=False, key="wi_no_new_rep")
         if not wi_no_new_rep:
             st.markdown("**New Rep language:**")
-            wi_new_lang = st.selectbox("New Rep language:", options=["German", "French", "Italian"], key="wi_lang", label_visibility="collapsed")
+            wi_new_lang = st.selectbox("New Rep language:", options=["Any (no constraint)", "German", "French", "Italian"], key="wi_lang", label_visibility="collapsed")
         else:
             wi_new_lang = "German"
             wi_manual_lat = 0.0
             wi_manual_lng = 0.0
-        wi_preserve = st.checkbox("Preserve existing territory boundaries", value=True,
-            help="When checked, existing reps keep their current blocks unless significantly over capacity. Only blocks near the new Rep are reassigned.")
         if st.button("Generate Scenarios.", type="primary"):
             st.session_state["wi_run"] = True
+            st.session_state["wi_loaded_scenario"] = None
         if st.button("Reset Scenario."):
             st.session_state["wi_run"] = False
-            st.session_state["wi_scenarios"] = []
+            # Do NOT clear wi_scenarios when collapsing — preserve results for when reopened
+            # st.session_state["wi_scenarios"] = []
             st.session_state["wi_loaded_scenario"] = None
             st.session_state.activated_observe_eans = set()
             st.session_state.activated_obs_freq = 4
@@ -1083,361 +1127,537 @@ if _sec_coverage:
     # Freq inputs in a narrow column (1/3 page) — matches Visit Frequency Scenario proportions
     with wi2:
         if st.session_state.get("wi_run", False):
-            # Step 1: Select Observe pharmacies to activate
-            needed_new_visited = int(np.ceil(wi_target/100*total_pharma)) - total_visited
-            needed_new_visited = max(0, needed_new_visited)
+            if False:  # always regenerate scenarios on button click
+                pass
+            else:
+                # Step 1: Select Observe pharmacies to activate
+                needed_new_visited = int(np.ceil(wi_target/100*total_pharma)) - total_visited
+                needed_new_visited = max(0, needed_new_visited)
 
-            observe_ranked = pharma_current[pharma_current["CVM_clean"]=="Observe"].sort_values("FY2025", ascending=False)
-            activated_observe = observe_ranked.head(needed_new_visited)
-            activated_blocks = set(activated_observe["Block_APO"].unique())
+                observe_ranked = pharma_current[pharma_current["CVM_clean"]=="Observe"].sort_values("FY2025", ascending=False)
+                activated_observe = observe_ranked.head(needed_new_visited)
+                activated_blocks = set(activated_observe["Block_APO"].unique())
 
-            # Step 2: Recalculate block visits with user frequencies
-            pc = pharma_current.copy()
-            # Mark activated observe pharmacies
-            activated_eans = set(activated_observe["EAN"].astype(str))
-            def calc_new_visits(row):
-                cvm = row["CVM_clean"]
-                is_tp = row.get("Top_Priority", 0) == 1
-                sales = row.get("FY2025", 0)
-                # 2-visit: always fixed
-                if row["Planned_Visits"] == 2: return 2
-                # 5-visit: use max(5, applicable frequency) — never drops below 5
-                if row["Planned_Visits"] == 5:
-                    base = wi_freq.get(cvm, 5)
-                    result = max(5, base)
+                # Step 2: Recalculate block visits with user frequencies
+                pc = pharma_current.copy()
+                # Mark activated observe pharmacies
+                activated_eans = set(activated_observe["EAN"].astype(str))
+                def calc_new_visits(row):
+                    cvm = row["CVM_clean"]
+                    is_tp = row.get("Top_Priority", 0) == 1
+                    sales = row.get("FY2025", 0)
+                    # 2-visit: always fixed
+                    if row["Planned_Visits"] == 2: return 2
+                    # 5-visit: use max(5, applicable frequency) — never drops below 5
+                    if row["Planned_Visits"] == 5:
+                        base = wi_freq.get(cvm, 5)
+                        result = max(5, base)
+                        if wi_sales_active.get(cvm, False) and sales >= wi_sales_threshold:
+                            result = max(5, wi_sales_freq.get(cvm, base))
+                        if is_tp and wi_tp_active.get(cvm, False):
+                            result = max(5, wi_tp_freq.get(cvm, base))
+                        return result
+                    # Observe: only activated ones get visits
+                    if cvm == "Observe":
+                        if str(row["EAN"]) in activated_eans:
+                            obs_f = wi_freq.get("Observe", 0) if wi_freq.get("Observe", 0) > 0 else wi_freq.get("Build", 4)
+                            return obs_f
+                        return 0
+                    # Regular CVM — priority: TP > Sales > CVM
+                    base = wi_freq.get(cvm, 0)
+                    result = base
                     if wi_sales_active.get(cvm, False) and sales >= wi_sales_threshold:
-                        result = max(5, wi_sales_freq.get(cvm, base))
+                        result = wi_sales_freq.get(cvm, base)
                     if is_tp and wi_tp_active.get(cvm, False):
-                        result = max(5, wi_tp_freq.get(cvm, base))
+                        result = wi_tp_freq.get(cvm, base)
                     return result
-                # Observe: only activated ones get visits
-                if cvm == "Observe":
-                    if str(row["EAN"]) in activated_eans:
-                        obs_f = wi_freq.get("Observe", 0) if wi_freq.get("Observe", 0) > 0 else wi_freq.get("Build", 4)
-                        return obs_f
-                    return 0
-                # Regular CVM — priority: TP > Sales > CVM
-                base = wi_freq.get(cvm, 0)
-                result = base
-                if wi_sales_active.get(cvm, False) and sales >= wi_sales_threshold:
-                    result = wi_sales_freq.get(cvm, base)
-                if is_tp and wi_tp_active.get(cvm, False):
-                    result = wi_tp_freq.get(cvm, base)
-                return result
-            pc["new_visits"] = pc.apply(calc_new_visits, axis=1)
+                pc["new_visits"] = pc.apply(calc_new_visits, axis=1)
 
-            # Activated observe count per block
-            act_obs_per_block = activated_observe.groupby("Block_APO").size().to_dict()
+                # Activated observe count per block
+                act_obs_per_block = activated_observe.groupby("Block_APO").size().to_dict()
 
-            bc = block_centroids.copy()
-            block_all = pc.groupby("Block_APO").agg(
-                total_pharma=("EAN","count"),
-                visited_count=("CVM_clean", lambda x: x.isin(visited_cvms).sum()),
-                total_visits=("new_visits","sum"),
-                total_sales=("FY2025","sum"),
-            ).reset_index()
+                bc = block_centroids.copy()
+                block_all = pc.groupby("Block_APO").agg(
+                    total_pharma=("EAN","count"),
+                    visited_count=("CVM_clean", lambda x: x.isin(visited_cvms).sum()),
+                    total_visits=("new_visits","sum"),
+                    total_sales=("FY2025","sum"),
+                ).reset_index()
 
-            block_info = bc.merge(block_all, on="Block_APO", how="left")
-            block_info["activated_obs"] = block_info["Block_APO"].map(act_obs_per_block).fillna(0).astype(int)
-            block_info["new_visited"] = block_info["visited_count"] + block_info["activated_obs"]
-            # Base visits = CVM visits only (no Observe), for block assignment
-            pc_no_obs = pc[pc["CVM_clean"] != "Observe"]
-            block_base = pc_no_obs.groupby("Block_APO")["new_visits"].sum().to_dict()
-            block_info["base_visits"] = block_info["Block_APO"].map(block_base).fillna(0)
+                block_info = bc.merge(block_all, on="Block_APO", how="left")
+                block_info["activated_obs"] = block_info["Block_APO"].map(act_obs_per_block).fillna(0).astype(int)
+                block_info["new_visited"] = block_info["visited_count"] + block_info["activated_obs"]
+                # Base visits = CVM visits only (no Observe), for block assignment
+                pc_no_obs = pc[pc["CVM_clean"] != "Observe"]
+                block_base = pc_no_obs.groupby("Block_APO")["new_visits"].sum().to_dict()
+                block_info["base_visits"] = block_info["Block_APO"].map(block_base).fillna(0)
 
-            # Block language from original territory
-            orig_terr_map = dict(zip(block_df_original["Block_APO"], block_df_original["territory"]))
-            block_info["orig_territory"] = block_info["Block_APO"].map(orig_terr_map)
-            block_info["language"] = block_info["orig_territory"].map(TERRITORY_LANGUAGE).fillna("Unknown")
+                # Block language from original territory
+                orig_terr_map = dict(zip(block_df_original["Block_APO"], block_df_original["territory"]))
+                block_info["orig_territory"] = block_info["Block_APO"].map(orig_terr_map)
+                block_info["language"] = block_info["orig_territory"].map(TERRITORY_LANGUAGE).fillna("Unknown")
 
-            # Distance from each rep home to each block
-            all_reps_homes = dict(REP_HOME)
-            for rn, h in all_reps_homes.items():
-                block_info[f"dist_{rn}"] = block_info.apply(
-                    lambda r: round(haversine_km(h["lat"],h["lng"],r["lat"],r["lng"]),1) if pd.notna(r["lat"]) else 999, axis=1)
+                # Distance from each rep home to each block
+                all_reps_homes = dict(REP_HOME)
+                for rn, h in all_reps_homes.items():
+                    block_info[f"dist_{rn}"] = block_info.apply(
+                        lambda r: round(haversine_km(h["lat"],h["lng"],r["lat"],r["lng"]),1) if pd.notna(r["lat"]) else 999, axis=1)
 
-            rep_lang = dict(REP_LANGUAGE)
-            if not wi_no_new_rep:
-                rep_lang["NewRep"] = wi_new_lang
-
-            def find_optimal_location(blocks_subset, weight_col):
-                if len(blocks_subset) == 0:
-                    return 46.8, 8.2
-                weights = blocks_subset[weight_col].clip(lower=1)
-                return (np.average(blocks_subset["lat"], weights=weights),
-                        np.average(blocks_subset["lng"], weights=weights))
-
-            rep_caps_local = {r: REP_CAPACITY[r]["capacity"] for r in REP_HOME}
-            if not wi_no_new_rep:
-                rep_caps_local["NewRep"] = wi_max_visits
-
-            def run_scenario(name, new_rep_lat, new_rep_lng):
-                bi = block_info.copy()
+                rep_lang = dict(REP_LANGUAGE)
                 if not wi_no_new_rep:
-                    bi["dist_NewRep"] = bi.apply(
-                        lambda r: round(haversine_km(new_rep_lat, new_rep_lng, r["lat"], r["lng"]),1) if pd.notna(r["lat"]) else 999, axis=1)
+                    rep_lang["NewRep"] = wi_new_lang
 
-                all_rep_names = list(REP_HOME.keys()) if wi_no_new_rep else list(REP_HOME.keys()) + ["NewRep"]
-                rep_caps = {r: REP_CAPACITY[r]["capacity"] for r in REP_HOME}
+                def find_optimal_location(blocks_subset, weight_col):
+                    if len(blocks_subset) == 0:
+                        return 46.8, 8.2
+                    weights = blocks_subset[weight_col].clip(lower=1)
+                    return (np.average(blocks_subset["lat"], weights=weights),
+                            np.average(blocks_subset["lng"], weights=weights))
+
+                rep_caps_local = {r: REP_CAPACITY[r]["capacity"] for r in REP_HOME}
                 if not wi_no_new_rep:
-                    rep_caps["NewRep"] = wi_max_visits
-                obs_freq_local = wi_freq.get("Observe", 4)
-                obs_reserve_per_rep = (needed_new_visited * obs_freq_local) / max(len(all_rep_names), 1)
-                rep_caps_for_blocks = {r: max(rep_caps[r] - obs_reserve_per_rep, rep_caps[r] * 0.75) for r in all_rep_names}
-                ba = {}
+                    rep_caps_local["NewRep"] = wi_max_visits
 
-                # STEP A: Assign blocks — NewRep gets its closest blocks first (geographic cluster),
-                # then existing reps divide the remainder by nearest-distance
-                for lang in ["German", "French", "Italian"]:
-                    lang_reps = [r for r in all_rep_names if rep_lang.get(r) == lang]
-                    lang_bl = bi[bi["language"] == lang].copy()
-                    if not lang_reps or len(lang_bl) == 0: continue
+                def run_scenario(name, new_rep_lat, new_rep_lng):
+                    bi = block_info.copy()
+                    if not wi_no_new_rep:
+                        bi["dist_NewRep"] = bi.apply(
+                            lambda r: round(haversine_km(new_rep_lat, new_rep_lng, r["lat"], r["lng"]),1) if pd.notna(r["lat"]) else 999, axis=1)
 
-                    for r in lang_reps:
-                        if f"dist_{r}" not in lang_bl.columns: lang_bl[f"dist_{r}"] = 999
-                    rep_used = {r: 0 for r in lang_reps}
-                    existing_reps = [r for r in lang_reps if r != "NewRep"]
+                    all_rep_names = list(REP_HOME.keys()) if wi_no_new_rep else list(REP_HOME.keys()) + ["NewRep"]
+                    rep_caps = {r: REP_CAPACITY[r]["capacity"] for r in REP_HOME}
+                    if not wi_no_new_rep:
+                        rep_caps["NewRep"] = wi_max_visits
+                    obs_freq_local = wi_freq.get("Observe", 4)
+                    obs_reserve_per_rep = (needed_new_visited * obs_freq_local) / max(len(all_rep_names), 1)
+                    rep_caps_for_blocks = {r: max(rep_caps[r] - obs_reserve_per_rep, rep_caps[r] * 0.75) for r in all_rep_names}
+                    ba = {}
 
-                    # Phase 1: Give NewRep its N nearest blocks (compact geographic territory)
-                    if "NewRep" in lang_reps:
-                        nr_sorted = lang_bl.sort_values("dist_NewRep")
-                        for _, row in nr_sorted.iterrows():
-                            bid = row["Block_APO"]; bv = row["base_visits"]
-                            if rep_used["NewRep"] + bv <= rep_caps_for_blocks["NewRep"]:
-                                ba[bid] = "NewRep"; rep_used["NewRep"] += bv
+                    # STEP A: Assign blocks — NewRep gets its closest blocks first (geographic cluster),
+                    # then existing reps divide the remainder by nearest-distance
+                    _any_mode = (rep_lang.get("NewRep","") == "Any (no constraint)")
 
-                    # Phase 2: Assign remaining blocks to existing reps
-                    remaining = lang_bl[~lang_bl["Block_APO"].isin(ba)].copy()
-                    if wi_preserve:
-                        # Preservation mode: existing reps keep their CURRENT blocks first
-                        curr_assign = dict(zip(block_df["Block_APO"], block_df["territory"]))
-                        lang_terrs_local = LANGUAGE_TERRITORIES.get(lang, [])
-                        r2t = {TERRITORY_TO_REP.get(t,""): t for t in lang_terrs_local}
-                        # First pass: assign blocks to their current rep (respecting capacity)
-                        unassigned = []
-                        for _, row in remaining.iterrows():
-                            bid = row["Block_APO"]; bv = row["base_visits"]
-                            curr_terr = curr_assign.get(bid, "")
-                            curr_rep = TERRITORY_TO_REP.get(curr_terr, "")
-                            if curr_rep in existing_reps and rep_used[curr_rep] + bv <= rep_caps_for_blocks[curr_rep]:
-                                ba[bid] = curr_rep; rep_used[curr_rep] += bv
-                            else:
-                                unassigned.append(row)
-                        # Second pass: remaining blocks go to nearest rep with capacity
-                        for row in unassigned:
-                            bid = row["Block_APO"]; bv = row["base_visits"]
-                            pool = existing_reps if existing_reps else lang_reps
-                            dists = {r: row[f"dist_{r}"] for r in pool}
-                            assigned = False
-                            for r in sorted(dists, key=dists.get):
-                                if rep_used[r] + bv <= rep_caps_for_blocks[r]:
-                                    ba[bid] = r; rep_used[r] += bv; assigned = True; break
-                            if not assigned:
-                                least = min(pool, key=lambda r: rep_used[r]/rep_caps_for_blocks[r] if rep_caps_for_blocks[r]>0 else 999)
-                                ba[bid] = least; rep_used[least] += bv
-                    else:
-                        # Free mode: pure distance-based assignment
-                        if existing_reps:
-                            remaining["min_dist_ex"] = remaining[[f"dist_{r}" for r in existing_reps]].min(axis=1)
-                            remaining = remaining.sort_values("min_dist_ex")
-                        for _, row in remaining.iterrows():
-                            bid = row["Block_APO"]; bv = row["base_visits"]
-                            pool = existing_reps if existing_reps else lang_reps
-                            dists = {r: row[f"dist_{r}"] for r in pool}
-                            assigned = False
-                            for r in sorted(dists, key=dists.get):
-                                if rep_used[r] + bv <= rep_caps_for_blocks[r]:
-                                    ba[bid] = r; rep_used[r] += bv; assigned = True; break
-                            if not assigned:
-                                least = min(pool, key=lambda r: rep_used[r]/rep_caps_for_blocks[r] if rep_caps_for_blocks[r]>0 else 999)
-                                ba[bid] = least; rep_used[least] += bv
+                    # In Any mode: existing reps keep territory within reduced cap; NewRep takes overflow
+                    if _any_mode and "NewRep" in all_rep_names:
+                        all_bl = bi.copy()
+                        all_bl["dist_NewRep"] = bi.apply(
+                            lambda r: round(haversine_km(new_rep_lat, new_rep_lng, r["lat"], r["lng"]),1) if pd.notna(r["lat"]) else 999, axis=1)
+                        bi["dist_NewRep"] = all_bl["dist_NewRep"]
+                        curr_assign_map = dict(zip(block_df_original["Block_APO"], block_df_original["territory"]))
+                        # Step 1: lock Alessia's IT-CH blocks
+                        for bid, terr in curr_assign_map.items():
+                            if terr == "IT-CH":
+                                ba[bid] = "Alessia"
+                        # Any mode: NewRep steals adjacent blocks from overloaded reps
+                        curr_assign_map = dict(zip(block_df_original["Block_APO"], block_df_original["territory"]))
+                        # Step 1: lock Alessia
+                        for bid, terr in curr_assign_map.items():
+                            if terr == "IT-CH":
+                                ba[bid] = "Alessia"
 
-                    # Balance capacity among existing reps only (preserve NewRep's compact cluster)
-                    for _i in range(200):
-                        if not existing_reps: break
-                        pct = {r: rep_used[r]/rep_caps[r] if rep_caps[r]>0 else 0 for r in lang_reps}
-                        over = [r for r in existing_reps if pct[r] > 1.0]
-                        if not over:
-                            spct = sorted(existing_reps, key=lambda r: pct[r])
-                            if not spct: break
-                            lo = spct[0]; hi = spct[-1]
-                            if pct[hi] - pct[lo] < 0.15: break
-                            if pct[lo] >= 0.80: break
-                            over = [hi]
-                        over.sort(key=lambda r: -pct[r]); moved = False
-                        for or_r in over:
-                            obl = lang_bl[lang_bl["Block_APO"].isin([b for b,r in ba.items() if r==or_r])]
-                            obl = obl.sort_values(f"dist_{or_r}", ascending=False)
-                            for _, brow in obl.iterrows():
-                                bid = brow["Block_APO"]; bv = brow["base_visits"]
-                                if bv == 0: continue
-                                # Try existing reps first (preferred — keeps NewRep territory compact)
-                                candidates = [(r, pct[r], brow[f"dist_{r}"]) for r in existing_reps
-                                             if r != or_r and rep_used[r]+bv <= rep_caps_for_blocks[r] and pct[r] < pct[or_r] - 0.05]
-                                if not candidates: continue
-                                candidates.sort(key=lambda x: (x[1], x[2]))
-                                ur_r = candidates[0][0]
-                                ba[bid]=ur_r; rep_used[or_r]-=bv; rep_used[ur_r]+=bv; moved=True; break
-                            if moved: break
-                        if not moved: break
+                        # Step 2: assign all existing non-Alessia reps their current blocks (unlimited)
+                        for _r in [r for r in all_rep_names if r != "NewRep" and rep_lang.get(r) != "Italian"]:
+                            _r_bids = [b for b,t in curr_assign_map.items() if TERRITORY_TO_REP.get(t,"") == _r]
+                            for _bid in _r_bids:
+                                if _bid not in ba:
+                                    ba[_bid] = _r
+                        # Also assign any remaining non-IT-CH blocks to nearest existing rep
+                        for _, _row in bi[bi["language"] != "Italian"].iterrows():
+                            _bid = _row["Block_APO"]
+                            if _bid in ba: continue
+                            _ex = [r for r in all_rep_names if r != "NewRep" and rep_lang.get(r) == _row.get("language","German")]
+                            if _ex:
+                                _best = min(_ex, key=lambda r: _row.get(f"dist_{r}", 999) if f"dist_{r}" in bi.columns else 999)
+                                ba[_bid] = _best
 
-                    # Extra pass: if existing reps still over capacity, let NewRep absorb their
-                    # CLOSEST blocks (not farthest) — preserves NewRep geographic compactness
-                    if "NewRep" in lang_reps:
-                        for _i in range(50):
-                            pct = {r: rep_used[r]/rep_caps[r] if rep_caps[r]>0 else 0 for r in lang_reps}
-                            still_over = [r for r in existing_reps if pct[r] > 1.0]
-                            if not still_over: break
-                            nr_cap_left = rep_caps_for_blocks["NewRep"] - rep_used["NewRep"]
-                            if nr_cap_left <= 0: break
-                            moved2 = False
-                            for or_r in sorted(still_over, key=lambda r: -pct[r]):
-                                # Sort by distance to NewRep ASCENDING — give NewRep the closest blocks
-                                obl2 = lang_bl[lang_bl["Block_APO"].isin([b for b,r in ba.items() if r==or_r])]
-                                obl2 = obl2.sort_values("dist_NewRep", ascending=True)
-                                for _, brow in obl2.iterrows():
-                                    bid = brow["Block_APO"]; bv = brow["base_visits"]
-                                    if bv == 0 or bv > nr_cap_left: continue
-                                    ba[bid]="NewRep"; rep_used[or_r]-=bv; rep_used["NewRep"]+=bv
-                                    nr_cap_left -= bv; moved2=True; break
-                                if moved2: break
-                            if not moved2: break
+                        # Step 3: calculate current visits per rep and target
+                        _rep_visits = {}
+                        for _r in [r for r in all_rep_names if r != "NewRep"]:
+                            _r_bl = bi[bi["Block_APO"].map(lambda b: ba.get(b) == _r)]
+                            _rep_visits[_r] = _r_bl["base_visits"].sum()
+                        _non_al_total = sum(v for r,v in _rep_visits.items() if rep_lang.get(r) != "Italian")
+                        _n7 = len([r for r in all_rep_names if r != "NewRep" and rep_lang.get(r) != "Italian"]) + 1
+                        _target = _non_al_total / _n7 if _n7 > 0 else 1435
 
-                    # Fine-tune geography among existing reps only
-                    for _i in range(50):
-                        imp = False
-                        for bid1, r1 in list(ba.items()):
-                            if r1 not in existing_reps: continue
-                            br1 = lang_bl[lang_bl["Block_APO"]==bid1]
-                            if len(br1)==0: continue
-                            br1 = br1.iloc[0]
-                            for r2 in existing_reps:
-                                if r2==r1: continue
-                                if br1[f"dist_{r2}"] < br1[f"dist_{r1}"]*0.7:
-                                    bv = br1["base_visits"]
-                                    if (rep_used[r2]+bv <= rep_caps_for_blocks[r2] and
-                                        rep_used[r1]-bv >= rep_caps_for_blocks[r1]*0.85):
-                                        ba[bid1]=r2; rep_used[r1]-=bv; rep_used[r2]+=bv; imp=True; break
-                            if imp: break
-                        if not imp: break
+                        # Step 4: seed NewRep from block of most overloaded rep (>110%) closest to NewRep home
+                        _overload_pct = {r: _rep_visits.get(r,0)/rep_caps.get(r,1435)
+                                         for r in all_rep_names if r != "NewRep" and rep_lang.get(r) != "Italian"
+                                         and _rep_visits.get(r,0)/rep_caps.get(r,1435) > 1.00}  # only reps over 100%
+                        if not _overload_pct:
+                            _overload_pct = {r: _rep_visits.get(r,0)/rep_caps.get(r,1435)
+                                             for r in all_rep_names if r != "NewRep" and rep_lang.get(r) != "Italian"
+                                             and _rep_visits.get(r,0)/rep_caps.get(r,1435) > 0.85}  # fallback: >85%
+                        _most_overloaded = max(_overload_pct, key=_overload_pct.get) if _overload_pct else None
+                        if _most_overloaded:
+                            _candidate_blocks = bi[bi["Block_APO"].map(lambda b: ba.get(b) == _most_overloaded)].copy()
+                        else:
+                            _candidate_blocks = bi[bi["language"] != "Italian"]
+                        _candidate_blocks = _candidate_blocks.sort_values("dist_NewRep")
+                        seed = int(_candidate_blocks.iloc[0]["Block_APO"])
+                        _donor = ba.get(seed)
+                        _bv_seed = max(_candidate_blocks.iloc[0].get("base_visits",0), _candidate_blocks.iloc[0].get("total_visits",0))
+                        if _bv_seed == 0: _bv_seed = _candidate_blocks.iloc[0].get("total_pharma",1) * 4
+                        # Check seed donor stays above 95% after losing this block
+                        _donor_cap_after_seed = (_rep_visits.get(_donor,0) - _bv_seed) / rep_caps.get(_donor, 1435)
+                        if _donor_cap_after_seed < 1.00:
+                            # Try next candidate blocks until we find one where donor stays >=95%
+                            for _, _row in _candidate_blocks.iterrows():
+                                _bid = int(_row["Block_APO"])
+                                _don = ba.get(_bid)
+                                _bv = max(_row.get("base_visits",0), _row.get("total_visits",0))
+                                if _bv == 0: _bv = _row.get("total_pharma",1) * 4
+                                if (_rep_visits.get(_don,0) - _bv) / rep_caps.get(_don,1435) >= 1.00:
+                                    seed = _bid; _donor = _don; _bv_seed = _bv; break
+                        ba[seed] = "NewRep"
+                        _rep_visits[_donor] = _rep_visits.get(_donor, 0) - _bv_seed
 
-                # STEP B: Activate Observe pharmacies within remaining capacity (capped at target)
-                bi["new_rep"] = bi["Block_APO"].map(ba)
-                rep_base = {}
-                for rn in all_rep_names:
-                    rep_base[rn] = int(bi[bi["new_rep"]==rn]["base_visits"].sum())
+                        nr_used = _bv_seed
+                        _nr_cap = rep_caps["NewRep"]
 
-                target_new = int(np.ceil(wi_target/100*total_pharma)) - total_visited
-                target_new = max(0, target_new)
-                total_act = 0; rep_act = {r:0 for r in all_rep_names}; blk_act = {}
-                obs_freq = wi_freq.get("Observe", 4)
-                if obs_freq > 0:
-                    all_obs_list = []
+                        # Step 5: BFS - steal adjacent blocks from overloaded reps
+                        frontier = {seed}
+                        visited_frontier = {seed}
+                        while nr_used < _nr_cap * 0.95:
+                            candidates = []
+                            for b in frontier:
+                                for nb in block_adjacency.get(b, set()):
+                                    if nb in visited_frontier: continue
+                                    donor = ba.get(nb)
+                                    if donor == "NewRep" or donor is None: continue
+                                    if rep_lang.get(donor, "") == "Italian": continue
+                                    if _rep_visits.get(donor,0) / rep_caps.get(donor, 1435) <= 1.00: continue  # never steal from under-capacity rep
+                                    _nb_row = all_bl[all_bl["Block_APO"] == nb]
+                                    if len(_nb_row) == 0: continue
+                                    _bv = max(_nb_row.iloc[0].get("base_visits",0), _nb_row.iloc[0].get("total_visits",0))
+                                    if _bv == 0: _bv = _nb_row.iloc[0].get("total_pharma",1) * 4
+                                    _donor_after = _rep_visits.get(donor,0) - _bv
+                                    _donor_cap_after = _donor_after / rep_caps.get(donor, 1435)
+                                    if _donor_cap_after >= 0.95:  # steal only if donor stays at or above 95%
+                                        candidates.append((nb, _bv, _nb_row.iloc[0]["dist_NewRep"], donor))
+                            if not candidates: break
+                            candidates.sort(key=lambda x: (-_rep_visits.get(x[3],0)/rep_caps.get(x[3],1435), x[2]))
+                            next_frontier = set()
+                            for nb, bv, _, donor in candidates:
+                                if ba.get(nb) == "NewRep": continue
+                                if nr_used + bv > _nr_cap: continue
+                                # Re-check donor floor WITH CURRENT _rep_visits (not pre-pass snapshot)
+                                if (_rep_visits.get(donor,0) - bv) / rep_caps.get(donor, 1435) < 0.95: continue
+                                ba[nb] = "NewRep"
+                                _rep_visits[donor] = _rep_visits.get(donor, 0) - bv
+                                nr_used += bv
+                                next_frontier.add(nb)
+                                visited_frontier.add(nb)
+                            if not next_frontier: break
+                            frontier = next_frontier
+                        # Step 6: balancing pass — move blocks from >100% reps to <100% reps (same language only)
+                        _MAX_PASSES = 30
+                        for _ in range(_MAX_PASSES):
+                            _rv = {}
+                            for _r in all_rep_names:
+                                _r_bids = [b for b,r in ba.items() if r == _r]
+                                _rv[_r] = bi[bi["Block_APO"].isin(_r_bids)]["base_visits"].sum()
+                            moved = False
+                            for _lang in ["German", "French", "Italian"]:
+                                _lang_reps = [r for r in all_rep_names if rep_lang.get(r) == _lang]  # no NewRep in language groups
+                                _under = [r for r in _lang_reps if _rv.get(r,0) / rep_caps.get(r,1435) < 1.00]
+                                _over  = [r for r in _lang_reps if _rv.get(r,0) / rep_caps.get(r,1435) > 1.00]
+                                if not _under or not _over: continue
+                                for _u in _under:
+                                    _u_blocks = {b for b,r in ba.items() if r == _u}
+                                    _candidates = []
+                                    for _b in _u_blocks:
+                                        for _nb in block_adjacency.get(_b, set()):
+                                            _donor = ba.get(_nb)
+                                            if _donor not in _over: continue
+                                            _nb_row = bi[bi["Block_APO"] == _nb]
+                                            if len(_nb_row) == 0: continue
+                                            _bv = _nb_row.iloc[0].get("base_visits", 0)
+                                            if (_rv.get(_donor,0) - _bv >= rep_caps.get(_donor,1435) * 0.95 and
+                                                _rv.get(_u,0) + _bv <= rep_caps.get(_u,1435) * 1.10):
+                                                _candidates.append((_nb, _bv, _donor))
+                                    if _candidates:
+                                        _candidates.sort(key=lambda x: -x[1])
+                                        _nb, _bv, _donor = _candidates[0]
+                                        ba[_nb] = _u
+                                        _rv[_u] = _rv.get(_u,0) + _bv
+                                        _rv[_donor] = _rv.get(_donor,0) - _bv
+                                        moved = True
+                                        break
+                                if moved: break
+                            if not moved: break
+                    # In any_mode, blocks are already fully assigned in steps 1-5 above
+                    # Only run the language loop for standard (non-any) mode
+                    if not _any_mode:
+                        for lang in ["German", "French", "Italian"]:
+                          # Existing reps always stay in their language group
+                          lang_reps_ex = [r for r in all_rep_names if r != "NewRep" and rep_lang.get(r) == lang]
+                          if _any_mode:
+                              lang_reps = lang_reps_ex  # NewRep already handled above
+                          else:
+                              lang_reps = [r for r in all_rep_names if rep_lang.get(r) == lang]
+                          lang_bl = bi[bi["language"] == lang].copy()
+                          if not lang_reps or len(lang_bl) == 0: continue
+
+                          for r in lang_reps:
+                              if f"dist_{r}" not in lang_bl.columns: lang_bl[f"dist_{r}"] = 999
+                          rep_used = {r: 0 for r in lang_reps}
+                          existing_reps = [r for r in lang_reps if r != "NewRep"]
+
+                          # Phase 1: Give NewRep its N nearest blocks (compact geographic territory)
+                          if "NewRep" in lang_reps:
+                              nr_sorted = lang_bl.sort_values("dist_NewRep")
+                              for _, row in nr_sorted.iterrows():
+                                  bid = row["Block_APO"]; bv = row["base_visits"]
+                                  if rep_used["NewRep"] + bv <= rep_caps_for_blocks["NewRep"]:
+                                      ba[bid] = "NewRep"; rep_used["NewRep"] += bv
+
+                          # Phase 2: Assign remaining blocks to existing reps
+                          remaining = lang_bl[~lang_bl["Block_APO"].isin(ba)].copy()
+                          # Preservation mode: existing reps keep their CURRENT blocks first
+                          curr_assign = dict(zip(block_df["Block_APO"], block_df["territory"]))
+                          lang_terrs_local = LANGUAGE_TERRITORIES.get(lang, [])
+                          r2t = {TERRITORY_TO_REP.get(t,""): t for t in lang_terrs_local}
+                          # First pass: assign blocks to their current rep (respecting capacity)
+                          unassigned = []
+                          for _, row in remaining.iterrows():
+                              bid = row["Block_APO"]; bv = row["base_visits"]
+                              curr_terr = curr_assign.get(bid, "")
+                              curr_rep = TERRITORY_TO_REP.get(curr_terr, "")
+                              if curr_rep in existing_reps and rep_used[curr_rep] + bv <= rep_caps_for_blocks[curr_rep]:
+                                  ba[bid] = curr_rep; rep_used[curr_rep] += bv
+                              else:
+                                  unassigned.append(row)
+                          # Second pass: remaining blocks go to nearest rep with capacity
+                          for row in unassigned:
+                              bid = row["Block_APO"]; bv = row["base_visits"]
+                              pool = existing_reps if existing_reps else lang_reps
+                              dists = {r: row[f"dist_{r}"] for r in pool}
+                              assigned = False
+                              for r in sorted(dists, key=dists.get):
+                                  if rep_used[r] + bv <= rep_caps_for_blocks[r]:
+                                      ba[bid] = r; rep_used[r] += bv; assigned = True; break
+                              if not assigned:
+                                  least = min(pool, key=lambda r: rep_used[r]/rep_caps_for_blocks[r] if rep_caps_for_blocks[r]>0 else 999)
+                                  ba[bid] = least; rep_used[least] += bv
+
+                          # Balance capacity among existing reps only (preserve NewRep's compact cluster)
+                          for _i in range(200):
+                              if not existing_reps: break
+                              pct = {r: rep_used[r]/rep_caps[r] if rep_caps[r]>0 else 0 for r in lang_reps}
+                              over = [r for r in existing_reps if pct[r] > 1.0]
+                              if not over:
+                                  spct = sorted(existing_reps, key=lambda r: pct[r])
+                                  if not spct: break
+                                  lo = spct[0]; hi = spct[-1]
+                                  if pct[hi] - pct[lo] < 0.15: break
+                                  if pct[lo] >= 0.80: break
+                                  over = [hi]
+                              over.sort(key=lambda r: -pct[r]); moved = False
+                              for or_r in over:
+                                  obl = lang_bl[lang_bl["Block_APO"].isin([b for b,r in ba.items() if r==or_r])]
+                                  obl = obl.sort_values(f"dist_{or_r}", ascending=False)
+                                  for _, brow in obl.iterrows():
+                                      bid = brow["Block_APO"]; bv = brow["base_visits"]
+                                      if bv == 0: continue
+                                      # Try existing reps first (preferred — keeps NewRep territory compact)
+                                      candidates = [(r, pct[r], brow[f"dist_{r}"]) for r in existing_reps
+                                                   if r != or_r and rep_used[r]+bv <= rep_caps_for_blocks[r] and pct[r] < pct[or_r] - 0.05
+                                                   and (rep_used[or_r]-bv)/rep_caps[or_r] >= 0.80]  # donor stays ≥80%
+                                      if not candidates: continue
+                                      candidates.sort(key=lambda x: (x[1], x[2]))
+                                      ur_r = candidates[0][0]
+                                      ba[bid]=ur_r; rep_used[or_r]-=bv; rep_used[ur_r]+=bv; moved=True; break
+                                  if moved: break
+                              if not moved: break
+
+                          # Extra pass: if existing reps still over capacity, let NewRep absorb their
+                          # CLOSEST blocks (not farthest) — preserves NewRep geographic compactness
+                          if "NewRep" in lang_reps:
+                              for _i in range(50):
+                                  pct = {r: rep_used[r]/rep_caps[r] if rep_caps[r]>0 else 0 for r in lang_reps}
+                                  still_over = [r for r in existing_reps if pct[r] > 1.0]
+                                  if not still_over: break
+                                  nr_cap_left = rep_caps_for_blocks["NewRep"] - rep_used["NewRep"]
+                                  if nr_cap_left <= 0: break
+                                  moved2 = False
+                                  for or_r in sorted(still_over, key=lambda r: -pct[r]):
+                                      # Sort by distance to NewRep ASCENDING — give NewRep the closest blocks
+                                      obl2 = lang_bl[lang_bl["Block_APO"].isin([b for b,r in ba.items() if r==or_r])]
+                                      obl2 = obl2.sort_values("dist_NewRep", ascending=True)
+                                      for _, brow in obl2.iterrows():
+                                          bid = brow["Block_APO"]; bv = brow["base_visits"]
+                                          if bv == 0 or bv > nr_cap_left: continue
+                                          ba[bid]="NewRep"; rep_used[or_r]-=bv; rep_used["NewRep"]+=bv
+                                          nr_cap_left -= bv; moved2=True; break
+                                      if moved2: break
+                                  if not moved2: break
+
+                          # Fine-tune geography among existing reps only
+                          for _i in range(50):
+                              imp = False
+                              for bid1, r1 in list(ba.items()):
+                                  if r1 not in existing_reps: continue
+                                  br1 = lang_bl[lang_bl["Block_APO"]==bid1]
+                                  if len(br1)==0: continue
+                                  br1 = br1.iloc[0]
+                                  for r2 in existing_reps:
+                                      if r2==r1: continue
+                                      if br1[f"dist_{r2}"] < br1[f"dist_{r1}"]*0.7:
+                                          bv = br1["base_visits"]
+                                          if (rep_used[r2]+bv <= rep_caps_for_blocks[r2] and
+                                              rep_used[r1]-bv >= rep_caps_for_blocks[r1]*0.85):
+                                              ba[bid1]=r2; rep_used[r1]-=bv; rep_used[r2]+=bv; imp=True; break
+                                  if imp: break
+                              if not imp: break
+
+                    # STEP B: Activate Observe pharmacies within remaining capacity (capped at target)
+                    bi["new_rep"] = bi["Block_APO"].map(ba)
+                    rep_base = {}
                     for rn in all_rep_names:
-                        rep_bl = bi[bi["new_rep"]==rn]
-                        r_obs = pharma_current[
-                            (pharma_current["Block_APO"].isin(rep_bl["Block_APO"])) &
-                            (pharma_current["CVM_clean"]=="Observe")
-                        ].copy()
-                        r_obs["_rep"] = rn
-                        all_obs_list.append(r_obs)
-                    if all_obs_list:
-                        all_obs_df = pd.concat(all_obs_list).sort_values("FY2025", ascending=False)
-                        for _, orow in all_obs_df.iterrows():
-                            if total_act >= target_new: break
-                            rn = orow["_rep"]
-                            total_act += 1; rep_act[rn] += 1
-                            blk_act[orow["Block_APO"]] = blk_act.get(orow["Block_APO"],0)+1
+                        rep_base[rn] = int(bi[bi["new_rep"]==rn]["base_visits"].sum())
 
-                bi["final_activated"] = bi["Block_APO"].map(blk_act).fillna(0).astype(int)
-                new_cov = round((total_visited + total_act)/total_pharma*100, 1)
+                    target_new = int(np.ceil(wi_target/100*total_pharma)) - total_visited
+                    target_new = max(0, target_new)
+                    total_act = 0; rep_act = {r:0 for r in all_rep_names}; blk_act = {}
+                    obs_freq = wi_freq.get("Observe", 4)
+                    if obs_freq > 0:
+                        all_obs_list = []
+                        for rn in all_rep_names:
+                            rep_bl = bi[bi["new_rep"]==rn]
+                            r_obs = pharma_current[
+                                (pharma_current["Block_APO"].isin(rep_bl["Block_APO"])) &
+                                (pharma_current["CVM_clean"]=="Observe")
+                            ].copy()
+                            r_obs["_rep"] = rn
+                            all_obs_list.append(r_obs)
+                        if all_obs_list:
+                            all_obs_df = pd.concat(all_obs_list).sort_values("FY2025", ascending=False)
+                            for _, orow in all_obs_df.iterrows():
+                                if total_act >= target_new: break
+                                rn = orow["_rep"]
+                                total_act += 1; rep_act[rn] += 1
+                                blk_act[orow["Block_APO"]] = blk_act.get(orow["Block_APO"],0)+1
 
-                results = {}
-                for rn in all_rep_names:
-                    rb = bi[bi["new_rep"]==rn]; cap=rep_caps[rn]
-                    bv=rep_base[rn]; ao=rep_act[rn]; tv=bv+ao*obs_freq
-                    dc_col = f"dist_{rn}" if rn!="NewRep" else "dist_NewRep"
-                    nv=int(rb["visited_count"].sum())+ao; np2=int(rb["total_pharma"].sum())
-                    results[rn] = {
-                        "blocks":len(rb),"pharmacies":np2,"visited":nv,"activated_obs":ao,
-                        "coverage":round(nv/np2*100,1) if np2>0 else 0,
-                        "visits":tv,"capacity":cap,
-                        "cap_pct":round(tv/cap*100,1) if cap>0 else 0,
-                        "vpd":round(tv/WORKING_DAYS,1),
-                        "sales":round(rb["total_sales"].sum(),0),
-                        "avg_dist":round(rb[dc_col].mean(),1) if len(rb)>0 else 0,
-                        "max_dist":round(rb[dc_col].max(),1) if len(rb)>0 else 0,
-                    }
-                return {"name":name,"new_lat":new_rep_lat,"new_lng":new_rep_lng,
-                        "coverage":new_cov,"assignments":ba,"results":results,
-                        "total_activated":total_act}
+                    bi["final_activated"] = bi["Block_APO"].map(blk_act).fillna(0).astype(int)
+                    new_cov = round((total_visited + total_act)/total_pharma*100, 1)
 
-            # Generate scenarios
-            if wi_no_new_rep:
-                # Single scenario: optimise with existing 6 reps only
-                scenarios = [run_scenario("6-Rep Optimisation", 0.0, 0.0)]
-            else:
-                lang_blocks = block_info[block_info["language"] == wi_new_lang]
-                lang_terrs = LANGUAGE_TERRITORIES.get(wi_new_lang, [])
+                    # Build rep→blocks mapping from new assignments
+                    rep_blocks = {rn: [b for b,r in ba.items() if r==rn] for rn in all_rep_names}
+                    # Sales from pharmacy_detail based on new block assignments
+                    ph_sales = pharmacy_detail[["Block_APO","FY2025"]].copy()
+                    ph_sales["new_rep"] = ph_sales["Block_APO"].map(ba)
+                    rep_sales = ph_sales.groupby("new_rep")["FY2025"].sum().to_dict()
 
-                # ── Scenario 1: Overload Relief ──────────────────────────────────────
-                overload_scores = {}
-                for terr in lang_terrs:
-                    rep_name = TERRITORY_TO_REP.get(terr, "")
-                    if not rep_name: continue
-                    terr_bl = block_info[block_info["orig_territory"]==terr]
-                    terr_visits = terr_bl["base_visits"].sum()
-                    rep_cap_val = REP_CAPACITY.get(rep_name, {"capacity":1435})["capacity"]
-                    overload_scores[terr] = terr_visits / rep_cap_val if rep_cap_val > 0 else 0
-                if overload_scores:
-                    ol_terr = max(overload_scores, key=overload_scores.get)
-                    ol_bl = block_info[block_info["orig_territory"]==ol_terr]
-                    s1_lat, s1_lng = find_optimal_location(ol_bl, "total_pharma")
+                    results = {}
+                    for rn in all_rep_names:
+                        rb = bi[bi["new_rep"]==rn]; cap=rep_caps[rn]
+                        bv=rep_base[rn]; ao=rep_act[rn]; tv=bv+ao*obs_freq
+                        dc_col = f"dist_{rn}" if rn!="NewRep" else "dist_NewRep"
+                        nv=int(rb["visited_count"].sum())+ao; np2=int(rb["total_pharma"].sum())
+                        results[rn] = {
+                            "blocks":len(rb),"pharmacies":np2,"visited":nv,"activated_obs":ao,
+                            "coverage":round(nv/np2*100,1) if np2>0 else 0,
+                            "visits":tv,"capacity":cap,
+                            "cap_pct":round(tv/cap*100,1) if cap>0 else 0,
+                            "vpd":round(tv/WORKING_DAYS,1),
+                            "sales":round(rep_sales.get(rn, 0),0),
+                            "avg_dist":round(rb[dc_col].mean(),1) if len(rb)>0 else 0,
+                            "max_dist":round(rb[dc_col].max(),1) if len(rb)>0 else 0,
+                        }
+                    return {"name":name,"new_lat":new_rep_lat,"new_lng":new_rep_lng,
+                            "coverage":new_cov,"assignments":ba,"results":results,
+                            "total_activated":total_act,
+                            "base_visited":total_visited,
+                            "total_pharma":total_pharma,
+                            "activated_obs_eans":list(st.session_state.get("activated_observe_eans", set()))}
+
+                # Generate scenarios
+                if wi_no_new_rep:
+                    # Single scenario: optimise with existing 6 reps only
+                    scenarios = [run_scenario("6-Rep Optimisation", 0.0, 0.0)]
                 else:
-                    s1_lat, s1_lng = find_optimal_location(lang_blocks, "total_pharma")
+                    _any_lang = (wi_new_lang == "Any (no constraint)")
+                    if _any_lang:
+                        lang_blocks = block_info[block_info["language"] != "Italian"].copy()  # exclude Alessia's locked IT-CH
+                        lang_terrs = [t for t in TERRITORY_TO_REP.keys() if t != "IT-CH"]
+                        # Pre-calculate s1/s2/s3 for Any mode here
+                        _rep_loads_any = {}
+                        for _t in lang_terrs:
+                            _rn = TERRITORY_TO_REP.get(_t, ""); _rc = REP_CAPACITY.get(_rn, {"capacity":1435})["capacity"]
+                            _tv = block_info[block_info["orig_territory"]==_t]["base_visits"].sum()
+                            _rep_loads_any[_t] = _tv / _rc if _rc > 0 else 0
+                        _ol_terr = max(_rep_loads_any, key=_rep_loads_any.get) if _rep_loads_any else lang_terrs[0]
+                        _ol_bl = block_info[block_info["orig_territory"]==_ol_terr]
+                        s1_lat, s1_lng = find_optimal_location(_ol_bl, "total_pharma")
+                        _w = lang_blocks.copy(); _w["_ow"] = _w["orig_territory"].map(_rep_loads_any).fillna(1.0)
+                        s2_lat = (_w["lat"]*_w["_ow"]).sum()/_w["_ow"].sum() if _w["_ow"].sum()>0 else 47.0
+                        s2_lng = (_w["lng"]*_w["_ow"]).sum()/_w["_ow"].sum() if _w["_ow"].sum()>0 else 8.3
+                        _obs_any = lang_blocks[lang_blocks["activated_obs"]>0]
+                        s3_lat, s3_lng = find_optimal_location(_obs_any, "total_sales") if len(_obs_any)>0 else (s2_lat, s2_lng)
+                    else:
+                        lang_blocks = block_info[block_info["language"] == wi_new_lang]
+                        lang_terrs = LANGUAGE_TERRITORIES.get(wi_new_lang, [])
 
-                # ── Scenario 2: Geographic Gap ────────────────────────────────────────
-                rep_homes_lang = {TERRITORY_TO_REP.get(t,""): REP_HOME.get(TERRITORY_TO_REP.get(t,""),{})
-                                 for t in lang_terrs if TERRITORY_TO_REP.get(t,"") in REP_HOME}
-                if len(lang_blocks) > 0 and rep_homes_lang:
-                    _gap_bl = lang_blocks.copy()
-                    _gap_bl["_gap"] = _gap_bl.apply(
-                        lambda row: min([haversine_km(h["lat"],h["lng"],row["lat"],row["lng"])
-                                        for h in rep_homes_lang.values() if h], default=999), axis=1)
-                    _top_gap = _gap_bl.nlargest(max(1, len(_gap_bl)//4), "_gap")
-                    s2_lat = (_top_gap["lat"] * _top_gap["total_pharma"]).sum() / max(_top_gap["total_pharma"].sum(), 1)
-                    s2_lng = (_top_gap["lng"] * _top_gap["total_pharma"]).sum() / max(_top_gap["total_pharma"].sum(), 1)
-                else:
-                    s2_lat, s2_lng = s1_lat, s1_lng
+                    # ── Scenario 1: Overload Relief ──────────────────────────────────────
+                    overload_scores = {}
+                    for terr in lang_terrs:
+                        rep_name = TERRITORY_TO_REP.get(terr, "")
+                        if not rep_name: continue
+                        terr_bl = block_info[block_info["orig_territory"]==terr]
+                        terr_visits = terr_bl["base_visits"].sum()
+                        rep_cap_val = REP_CAPACITY.get(rep_name, {"capacity":1435})["capacity"]
+                        overload_scores[terr] = terr_visits / rep_cap_val if rep_cap_val > 0 else 0
+                    if overload_scores:
+                        ol_terr = max(overload_scores, key=overload_scores.get)
+                        ol_bl = block_info[block_info["orig_territory"]==ol_terr]
+                        s1_lat, s1_lng = find_optimal_location(ol_bl, "total_pharma")
+                    else:
+                        s1_lat, s1_lng = find_optimal_location(lang_blocks, "total_pharma")
 
-                # ── Scenario 3: Coverage-focused ─────────────────────────────────────
-                obs_lang = lang_blocks[lang_blocks["activated_obs"] > 0]
-                if len(obs_lang) > 0:
-                    s3_lat, s3_lng = find_optimal_location(obs_lang, "total_sales")
-                else:
-                    s3_lat, s3_lng = find_optimal_location(lang_blocks, "total_sales")
+                    if not _any_lang:
+                        # ── Scenario 2: Geographic Gap ────────────────────────────────────────
+                        rep_homes_lang = {TERRITORY_TO_REP.get(t,""): REP_HOME.get(TERRITORY_TO_REP.get(t,""),{})
+                                         for t in lang_terrs if TERRITORY_TO_REP.get(t,"") in REP_HOME}
+                        if len(lang_blocks) > 0 and rep_homes_lang:
+                            _gap_bl = lang_blocks.copy()
+                            _gap_bl["_gap"] = _gap_bl.apply(
+                                lambda row: min([haversine_km(h["lat"],h["lng"],row["lat"],row["lng"])
+                                                for h in rep_homes_lang.values() if h], default=999), axis=1)
+                            _top_gap = _gap_bl.nlargest(max(1, len(_gap_bl)//4), "_gap")
+                            s2_lat = (_top_gap["lat"] * _top_gap["total_pharma"]).sum() / max(_top_gap["total_pharma"].sum(), 1)
+                            s2_lng = (_top_gap["lng"] * _top_gap["total_pharma"]).sum() / max(_top_gap["total_pharma"].sum(), 1)
+                        else:
+                            s2_lat, s2_lng = s1_lat, s1_lng
 
-                scenarios = [
-                    run_scenario("1. Overload Relief", s1_lat, s1_lng),
-                    run_scenario("2. Geographic Gap", s2_lat, s2_lng),
-                    run_scenario("3. Coverage-focused", s3_lat, s3_lng),
-                ]
-            st.session_state["wi_scenarios"] = scenarios
+                        # ── Scenario 3: Coverage-focused ─────────────────────────────────────
+                        obs_lang = lang_blocks[lang_blocks["activated_obs"] > 0]
+                        if len(obs_lang) > 0:
+                            s3_lat, s3_lng = find_optimal_location(obs_lang, "total_sales")
+                        else:
+                            s3_lat, s3_lng = find_optimal_location(lang_blocks, "total_sales")
+
+                    scenarios = [
+                        run_scenario("1. Overload Relief", s1_lat, s1_lng),
+                        run_scenario("2. Geographic Gap", s2_lat, s2_lng),
+                        run_scenario("3. Coverage-focused", s3_lat, s3_lng),
+                    ]
+                st.session_state["wi_scenarios"] = scenarios
+                st.session_state["wi_run"] = False  # reset so reopening doesn't regenerate
 
             if wi_no_new_rep:
                 st.markdown('''<div style="background:#546955;border-radius:10px;padding:12px 16px;margin:6px 0 12px 0;width:fit-content;max-width:100%;font-size:12px;color:#F7EFE6;line-height:1.8;">
-6-Rep Optimisation — blocks redistributed among existing 6 reps to maximise coverage without adding a new rep.<br><br>
-<i>Click on Load to see changes on the map.</i>
-</div>''', unsafe_allow_html=True)
+    6-Rep Optimisation — blocks redistributed among existing 6 reps to maximise coverage without adding a new rep.<br><br>
+    <i>Click on Load to see changes on the map.</i>
+    </div>''', unsafe_allow_html=True)
             else:
                 st.markdown('''<div style="background:#546955;border-radius:10px;padding:12px 16px;margin:6px 0 12px 0;width:fit-content;max-width:100%;font-size:12px;color:#F7EFE6;line-height:1.8;">
-Scenarios:<br>
-&#8226; 1. Overload Relief — New Rep at centroid of most overloaded territory.<br>
-&#8226; 2. Geographic Gap — New Rep where existing Reps travel furthest.<br>
-&#8226; 3. Coverage-focused — New Rep near highest-value Observe clusters.<br>
-&#8226; 4. Manual Placement — enter coordinates below to place the New Rep manually.<br><br>
-<i>Click on Load to see changes on the map.</i>
-</div>''', unsafe_allow_html=True)
+    Scenarios:<br>
+    &#8226; 1. Overload Relief — New Rep at centroid of most overloaded territory.<br>
+    &#8226; 2. Geographic Gap — New Rep where existing Reps travel furthest.<br>
+    &#8226; 3. Coverage-focused — New Rep near highest-value Observe clusters.<br>
+    &#8226; 4. Manual Placement — enter coordinates below to place the New Rep manually.<br><br>
+    <i>Click on Load to see changes on the map.</i>
+    </div>''', unsafe_allow_html=True)
 
             for sc in st.session_state.get("wi_scenarios", []):
                 exp_label = f"{sc['name']} — Coverage: {sc['coverage']}%" if wi_no_new_rep else f"{sc['name']} — Coverage: {sc['coverage']}% — New rep at ({sc['new_lat']:.2f}, {sc['new_lng']:.2f})"
@@ -1451,7 +1671,7 @@ Scenarios:<br>
                     tot_bl=0;tot_ph=0;tot_vi=0;tot_ob=0;tot_vs=0;tot_sl=0;tot_cn=0;tot_cd=0
                     for rn in [r for r in REP_ORDER if r in (list(REP_HOME.keys()) + ["NewRep"])]:
                         r = sc["results"].get(rn, {})
-                        rl = rep_lang.get(rn, "?")
+                        rl = REP_LANGUAGE.get(rn, wi_new_lang if rn=="NewRep" else "?")
                         bg = "background:#ffe8f6;" if rn=="NewRep" else ""
                         cp = r.get("cap_pct",0)
                         cs2 = "color:#e74c3c;font-weight:bold;" if cp>100 else ("color:#e67e22;" if cp<80 else "")
@@ -1485,8 +1705,7 @@ Scenarios:<br>
                     sh+=f'<td style="padding:4px;text-align:center;">{tot_sl:,.0f}</td></tr>'
                     sh += '</table>'
                     st.markdown(sh, unsafe_allow_html=True)
-
-                    # Recommendations panel when over capacity
+                    st.markdown('<p style="font-size:12px;color:#6D7F6E;font-style:italic;margin:4px 0 8px 0;">📍 <b>Avg km</b> = average straight-line distance from the rep\'s home to each assigned block centroid. <b>Max km</b> = distance to the furthest block centroid.</p>', unsafe_allow_html=True)
                     sc_total_visits = sum(r.get("visits",0) for r in sc["results"].values())
                     sc_total_cap = sum(REP_CAPACITY.get(rn,{"capacity":wi_max_visits})["capacity"] if rn!="NewRep" else wi_max_visits for rn in sc["results"])
                     sc_cap_pct = round(sc_total_visits/sc_total_cap*100,1) if sc_total_cap>0 else 0
@@ -1503,7 +1722,7 @@ Scenarios:<br>
                         if obs_freq_r > 0:
                             headroom = sc_total_cap*cap_target - cvm_visits
                             max_obs = max(0, int(headroom/obs_freq_r))
-                            cov_at = round((int(block_info["visited_count"].sum())+max_obs)/total_pharma*100,1)
+                            cov_at = round((sc.get("base_visited", sum(r.get("visited",0) for r in sc["results"].values()))+max_obs)/total_pharma*100,1)
                             cap_at = round((cvm_visits+max_obs*obs_freq_r)/sc_total_cap*100,1)
                             opt1 = f"<b>1. Keep frequencies, limit Observe to {cap_label} capacity:</b><br>&nbsp;&nbsp;Activate <strong>{max_obs}</strong> Observe pharmacies (freq={obs_freq_r}) → coverage <strong>{cov_at}%</strong>, capacity <strong>{cap_at}%</strong><br><br>"
                         else:
@@ -1517,7 +1736,7 @@ Scenarios:<br>
                         sug3 = {c: max(1, round(wi_freq.get(c,4)*scale3)) for c in ['Build','Defend','Gain','Maintain']}
                         if obs_freq_r > 0:
                             _cvm_ph_counts = {c: len(pharma_current[pharma_current["CVM_clean"]==c]) for c in ["Build","Defend","Gain","Maintain"]}
-                            _target_obs = max(0, int(np.ceil(wi_target/100*total_pharma)) - int(block_info["visited_count"].sum()))
+                            _target_obs = max(0, int(np.ceil(wi_target/100*sc.get("total_pharma",total_pharma))) - sc.get("base_visited", sum(r.get("visited",0) for r in sc["results"].values())))
                             _cap_budget = sc_total_cap * cap_target
                             # Compute scale needed to fit half of target Observe pharmacies
                             _min_scale = (_cap_budget - _target_obs * 0.5 * obs_freq_r) / cvm_visits if cvm_visits > 0 else 0.7
@@ -1527,14 +1746,14 @@ Scenarios:<br>
                             _sug3a = {c: max(1, round(wi_freq.get(c,4)*_sc3a)) for c in ["Build","Defend","Gain","Maintain"]}
                             _cv3a = sum(_sug3a[c]*_cvm_ph_counts.get(c,0) for c in _sug3a)
                             _obs3a = max(0, min(int((_cap_budget - _cv3a)/obs_freq_r), int(_target_obs*0.85)))
-                            _cov3a = round((int(block_info["visited_count"].sum())+_obs3a)/total_pharma*100,1)
+                            _cov3a = round((sc.get("base_visited", sum(r.get("visited",0) for r in sc["results"].values()))+_obs3a)/total_pharma*100,1)
                             _f3a = ", ".join([f"{c}: {_sug3a[c]}" for c in ["Build","Defend","Gain","Maintain"]])
                             # 3b: less aggressive reduction → fits fewer Observe
                             _sc3b = round(min(0.95, _min_scale + 0.1), 2)
                             _sug3b = {c: max(1, round(wi_freq.get(c,4)*_sc3b)) for c in ["Build","Defend","Gain","Maintain"]}
                             _cv3b = sum(_sug3b[c]*_cvm_ph_counts.get(c,0) for c in _sug3b)
                             _obs3b = max(0, min(int((_cap_budget - _cv3b)/obs_freq_r), int(_target_obs*0.5)))
-                            _cov3b = round((int(block_info["visited_count"].sum())+_obs3b)/total_pharma*100,1)
+                            _cov3b = round((sc.get("base_visited", sum(r.get("visited",0) for r in sc["results"].values()))+_obs3b)/total_pharma*100,1)
                             _f3b = ", ".join([f"{c}: {_sug3b[c]}" for c in ["Build","Defend","Gain","Maintain"]])
                             opt3 = (
                                 f'<b>3. Combined — reduce frequencies AND number of Observe pharmacies to reach {cap_label} capacity:</b><br>'
@@ -1598,7 +1817,7 @@ Scenarios:<br>
                         sh += '</tr>'
                         for rn in [r for r in REP_ORDER if r in (list(REP_HOME.keys()) + ["NewRep"])]:
                             r = _man_sc_existing["results"].get(rn, {})
-                            rl = rep_lang.get(rn, "?")
+                            rl = REP_LANGUAGE.get(rn, wi_new_lang if rn=="NewRep" else "?")
                             bg = "background:#ffe8f6;" if rn=="NewRep" else ""
                             cp = r.get("cap_pct",0)
                             cs2 = "color:#e74c3c;font-weight:bold;" if cp>100 else ("color:#e67e22;" if cp<80 else "")
@@ -1616,7 +1835,10 @@ Scenarios:<br>
                             st.rerun()
 
         else:
-            st.markdown('<p style="color:#6D7F6E;font-size:14px;">Set parameters and click <b>Generate Scenarios</b> to see optimization results.</p>', unsafe_allow_html=True)
+            if st.session_state.get("wi_scenarios"):
+                st.markdown('<p style="color:#6D7F6E;font-size:14px;font-style:italic;">Scenario loaded on map. Click <b>Generate Scenarios</b> to compute new scenarios.</p>', unsafe_allow_html=True)
+            else:
+                st.markdown('<p style="color:#6D7F6E;font-size:14px;">Set parameters and click <b>Generate Scenarios</b> to see optimization results.</p>', unsafe_allow_html=True)
 
     # SCENARIO MANAGEMENT
     # Ensure wi_freq etc. have defaults if Coverage Optimisation hasn't been run
@@ -1763,11 +1985,21 @@ Scenarios:<br>
 st.divider()
 
 _sec_cvm = st.session_state.get("sec_cvm", False)
+_sec_block_details = st.session_state.get("sec_block_details", False)
 _arr_cvm = "▼" if _sec_cvm else "▶"
+_arr_block_details = "▼" if _sec_block_details else "▶"
 _desc_color__sec_cvm = "#263F26" if _sec_cvm else "#6D7F6E"
-st.markdown(f'<div style="background:{_desc_color__sec_cvm};border-radius:10px;padding:10px 16px;margin:4px 0 4px 0;width:fit-content;max-width:100%;font-size:13px;color:#F7EFE6;line-height:1.6;">Summary of pharmacies, visits, and sales by CVM category across all territories.</div>', unsafe_allow_html=True)
-if st.button(f"{_arr_cvm}  CVM KPIs.", key="_btn_sec_cvm"):
-    st.session_state["sec_cvm"] = not _sec_cvm; st.rerun()
+_desc_color__sec_block_details = "#263F26" if _sec_block_details else "#6D7F6E"
+
+_hdr_cvm_col1, _hdr_cvm_col2 = st.columns(2)
+with _hdr_cvm_col1:
+    st.markdown(f'<div style="background:{_desc_color__sec_cvm};border-radius:10px;padding:10px 16px;margin:4px 0 4px 0;width:fit-content;max-width:100%;font-size:13px;color:#F7EFE6;line-height:1.6;">Summary of pharmacies, visits, and sales by CVM category across all territories.</div>', unsafe_allow_html=True)
+    if st.button(f"{_arr_cvm}  CVM KPIs.", key="_btn_sec_cvm"):
+        st.session_state["sec_cvm"] = not _sec_cvm; st.rerun()
+with _hdr_cvm_col2:
+    st.markdown(f'<div style="background:{_desc_color__sec_block_details};border-radius:10px;padding:10px 16px;margin:4px 0 4px 0;width:fit-content;max-width:100%;font-size:13px;color:#F7EFE6;line-height:1.6;">Detailed view of all IQVIA blocks with pharmacy counts and total Net Sales 2025.</div>', unsafe_allow_html=True)
+    if st.button(f"{_arr_block_details}  Block Details.", key="_btn_sec_block_details"):
+        st.session_state["sec_block_details"] = not _sec_block_details; st.rerun()
 if _sec_cvm:
     cfr = st.multiselect("Filter by Sales Rep:",options=["All"]+sorted(pharmacy_detail["Sales_Rep"].unique().tolist()),default=["All"],key="cvm_rep_filter")
     pf = pharma_current if "All" in cfr or not cfr else pharma_current[pharma_current["Sales_Rep"].isin(cfr)]
@@ -1793,14 +2025,7 @@ if _sec_cvm:
     st.markdown('<p style="font-size:13px;color:#6D7F6E;margin-top:4px;font-style:italic;">*Pharmacies that generated 50% of Net Sales in 2025.</p>', unsafe_allow_html=True)
 
 
-st.divider()
-
-_sec_block_details = st.session_state.get("sec_block_details", False)
-_arr_block_details = "▼" if _sec_block_details else "▶"
-_desc_color__sec_block_details = "#263F26" if _sec_block_details else "#6D7F6E"
-st.markdown(f'<div style="background:{_desc_color__sec_block_details};border-radius:10px;padding:10px 16px;margin:4px 0 4px 0;width:fit-content;max-width:100%;font-size:13px;color:#F7EFE6;line-height:1.6;">Detailed view of all IQVIA blocks with pharmacy counts and total Net Sales 2025.</div>', unsafe_allow_html=True)
-if st.button(f"{_arr_block_details}  Block Details.", key="_btn_sec_block_details"):
-    st.session_state["sec_block_details"] = not _sec_block_details; st.rerun()
+# (Block Details header moved above alongside CVM KPIs)
 if _sec_block_details:
     bm = pharma_current.groupby("Block_APO").agg(territory=("current_territory","first"),plz_count=("PLZ","nunique"),pharmacies=("EAN","count"),
         visited=("CVM_clean",lambda x:x.isin(visited_cvms).sum()),top_pharmacies=("Top_Priority","sum"),visits=("Planned_Visits","sum"),total_sales=("FY2025","sum")).reset_index()
@@ -1837,11 +2062,21 @@ if _sec_block_details:
 st.divider()
 
 _sec_observe = st.session_state.get("sec_observe", False)
+_sec_distance = st.session_state.get("sec_distance", False)
 _arr_observe = "▼" if _sec_observe else "▶"
+_arr_distance = "▼" if _sec_distance else "▶"
 _desc_color__sec_observe = "#263F26" if _sec_observe else "#6D7F6E"
-st.markdown(f'<div style="background:{_desc_color__sec_observe};border-radius:10px;padding:10px 16px;margin:4px 0 4px 0;width:fit-content;max-width:100%;font-size:13px;color:#F7EFE6;line-height:1.6;">Top Observe pharmacies ranked by Net Sales 2025 — not currently in the call plan.</div>', unsafe_allow_html=True)
-if st.button(f"{_arr_observe}  Observe Pharmacies.", key="_btn_sec_observe"):
-    st.session_state["sec_observe"] = not _sec_observe; st.rerun()
+_desc_color__sec_distance = "#263F26" if _sec_distance else "#6D7F6E"
+
+_hdr_obs_col1, _hdr_obs_col2 = st.columns(2)
+with _hdr_obs_col1:
+    st.markdown(f'<div style="background:{_desc_color__sec_observe};border-radius:10px;padding:10px 16px;margin:4px 0 4px 0;width:fit-content;max-width:100%;font-size:13px;color:#F7EFE6;line-height:1.6;">Top Observe pharmacies ranked by Net Sales 2025 — not currently in the call plan.</div>', unsafe_allow_html=True)
+    if st.button(f"{_arr_observe}  Observe Pharmacies.", key="_btn_sec_observe"):
+        st.session_state["sec_observe"] = not _sec_observe; st.rerun()
+with _hdr_obs_col2:
+    st.markdown(f'<div style="background:{_desc_color__sec_distance};border-radius:10px;padding:10px 16px;margin:4px 0 4px 0;width:fit-content;max-width:100%;font-size:13px;color:#F7EFE6;line-height:1.6;">Estimate straight-line travel distances between two points.</div>', unsafe_allow_html=True)
+    if st.button(f"{_arr_distance}  Distance Calculator.", key="_btn_sec_distance"):
+        st.session_state["sec_distance"] = not _sec_distance; st.rerun()
 if _sec_observe:
     obs=pharma_current[pharma_current["CVM_clean"]=="Observe"].copy().sort_values("FY2025",ascending=False)
     obs["current_territory"]=obs["current_territory"].fillna("Unknown")
@@ -1863,13 +2098,7 @@ if _sec_observe:
 
 
 
-st.divider()
-_sec_distance = st.session_state.get("sec_distance", False)
-_arr_distance = "▼" if _sec_distance else "▶"
-_desc_color__sec_distance = "#263F26" if _sec_distance else "#6D7F6E"
-st.markdown(f'<div style="background:{_desc_color__sec_distance};border-radius:10px;padding:10px 16px;margin:4px 0 4px 0;width:fit-content;max-width:100%;font-size:13px;color:#F7EFE6;line-height:1.6;">Estimate straight-line travel distances between two points.</div>', unsafe_allow_html=True)
-if st.button(f"{_arr_distance}  Distance Calculator.", key="_btn_sec_distance"):
-    st.session_state["sec_distance"] = not _sec_distance; st.rerun()
+# (Distance Calculator header moved above alongside Observe Pharmacies)
 if _sec_distance:
     dc1,dc2,dc3 = st.columns([1,1,1])
     bc_dict = dict(zip(block_centroids["Block_APO"], zip(block_centroids["lat"],block_centroids["lng"])))
@@ -1890,3 +2119,40 @@ if _sec_distance:
             to_label = f"🏠 {to}" if to in REP_HOME else f"Block {to}"
             st.markdown(f'<div style="padding:16px;background:#F0E5D8;border-radius:6px;margin-top:24px;"><strong style="font-size:20px;">{dist} km</strong><br>{fr_label} → {to_label}</div>', unsafe_allow_html=True)
 
+
+# ── Auto-scroll to opened section ─────────────────────────────────────────────
+_scroll_target = st.session_state.pop("_scroll_to", None)
+if _scroll_target:
+    import streamlit.components.v1 as _stc
+    _stc.html(f"""
+    <script>
+        window.parent.document.querySelectorAll('button').forEach(function(btn) {{
+            if (btn.innerText && btn.innerText.trim().replace(/^[▼▶]\\s*/, '') === btn.innerText.trim().replace(/^[▼▶]\\s*/, '')) {{
+                // find button by its key via data attribute — fallback: scroll by text match
+            }}
+        }});
+        // Reliable method: scroll to first element after the nav cards
+        setTimeout(function() {{
+            var btns = window.parent.document.querySelectorAll('button');
+            for (var i = 0; i < btns.length; i++) {{
+                var txt = btns[i].innerText || '';
+                var key = "{_scroll_target}";
+                var keyMap = {{
+                    "_btn_sec_territory":    "Adjusting Territory",
+                    "_btn_sec_visit_freq":   "Visit Frequency",
+                    "_btn_sec_coverage":     "Coverage Optimisation",
+                    "_btn_sec_cvm":          "CVM KPIs",
+                    "_btn_sec_block_details":"Block Details",
+                    "_btn_sec_observe":      "Observe Pharmacies",
+                    "_btn_sec_distance":     "Distance Calculator",
+                }};
+                var targetText = keyMap[key] || '';
+                if (targetText && txt.indexOf(targetText) !== -1) {{
+                    btns[i].scrollIntoView({{behavior: 'smooth', block: 'start'}});
+                    break;
+                }}
+            }}
+        }}, 400);
+    </script>
+    """, height=0)
+# ──────────────────────────────────────────────────────────────────────────────
