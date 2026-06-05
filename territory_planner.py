@@ -483,10 +483,13 @@ with col_map:
             src = st.selectbox("From territory:",options=["All"]+all_territories)
             avail = sorted(assignments.keys(), key=str) if src=="All" else sorted([b for b,t in assignments.items() if t==src], key=str)
             ns = st.multiselect("Select blocks:",options=avail,default=[b for b in st.session_state.selected_blocks_list if b in avail],format_func=lambda x:f"{x} ({assignments[x]})")
-            if ns != st.session_state.selected_blocks_list:
-                st.session_state.selected_blocks_list = ns
-                st.rerun()
-            tgt = st.selectbox("Move to:",options=[None]+all_territories,placeholder="Choose option",format_func=lambda x: "Choose option" if x is None else x)
+            # Keep selected_blocks_list in sync for map highlighting (no rerun needed)
+            st.session_state.selected_blocks_list = ns
+            tgt = st.selectbox("Move to:",options=[None]+all_territories,placeholder="Choose option",format_func=lambda x: "Choose option" if x is None else x, key="_move_to_tgt")
+            if tgt: st.session_state["_tgt_territory"] = tgt
+            elif "_tgt_territory" in st.session_state and st.session_state["_tgt_territory"] not in all_territories:
+                del st.session_state["_tgt_territory"]
+            tgt = tgt or st.session_state.get("_tgt_territory")
             if ns and tgt:
                 # Preview with pharmacy count
                 pv = {}
@@ -521,10 +524,19 @@ with col_map:
                     for w in lang_warnings[:5]: whtml += f'{w}<br>'
                     if len(lang_warnings) > 5: whtml += f'... and {len(lang_warnings)-5} more'
                     whtml += '</div>'; st.markdown(whtml, unsafe_allow_html=True)
-            if st.button("Apply Reassignment.",type="primary") and ns and tgt:
-                st.session_state.undo_stack.append(dict(st.session_state.assignments))
-                for b in ns: st.session_state.assignments[b] = tgt
-                st.session_state.selected_blocks_list = []; st.rerun()
+            if st.button("Apply Reassignment.", type="primary"):
+                # Capture ns and tgt immediately at button click time
+                _apply_ns = list(ns)
+                _apply_tgt = tgt or st.session_state.get("_tgt_territory")
+                if _apply_ns and _apply_tgt:
+                    st.session_state.undo_stack.append(dict(st.session_state.assignments))
+                    for b in _apply_ns:
+                        st.session_state.assignments[b] = _apply_tgt
+                    st.session_state.selected_blocks_list = []
+                    st.session_state.loaded_scenario_results = None
+                    st.session_state["wi_loaded_scenario"] = None
+                    st.session_state.pop("_tgt_territory", None)
+                    st.rerun()
         with ctrl3:
             st.markdown('<p style="color:#042B0B;font-weight:800;font-size:17px;">Actions.</p>', unsafe_allow_html=True)
             _a1, _a2 = st.columns(2)
