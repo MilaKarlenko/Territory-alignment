@@ -106,21 +106,18 @@ def dc(val):
 @st.cache_data
 def load_geojson():
     with open("blocks.geojson") as f: return json.load(f)
-@st.cache_data
-def load_csv(p, file_mod=None): return pd.read_csv(p)
-def get_csv(p):
-    import os; return load_csv(p, file_mod=os.path.getmtime(p))
+def load_csv(p): return pd.read_csv(p)
 
 geojson_data = load_geojson()
-block_df_original = get_csv("block_data.csv")
-block_rep_kpis = get_csv("block_rep_kpis.csv")
-rep_baseline = get_csv("rep_baseline.csv")
-block_rep_cvm = get_csv("block_rep_cvm.csv")
-rep_baseline_cvm = get_csv("rep_baseline_cvm.csv")
-block_rep_tp = get_csv("block_rep_tp.csv")
-rep_baseline_tp = get_csv("rep_baseline_tp.csv")
-pharmacy_detail = get_csv("pharmacy_detail.csv")
-block_centroids = get_csv("block_centroids.csv")
+block_df_original = load_csv("block_data.csv")
+block_rep_kpis = load_csv("block_rep_kpis.csv")
+rep_baseline = load_csv("rep_baseline.csv")
+block_rep_cvm = load_csv("block_rep_cvm.csv")
+rep_baseline_cvm = load_csv("rep_baseline_cvm.csv")
+block_rep_tp = load_csv("block_rep_tp.csv")
+rep_baseline_tp = load_csv("rep_baseline_tp.csv")
+pharmacy_detail = load_csv("pharmacy_detail.csv")
+block_centroids = load_csv("block_centroids.csv")
 
 # Initialize scenario state early
 if "activated_observe_eans" not in st.session_state:
