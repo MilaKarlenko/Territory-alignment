@@ -119,6 +119,12 @@ rep_baseline_tp = load_csv("rep_baseline_tp.csv")
 pharmacy_detail = load_csv("pharmacy_detail.csv")
 block_centroids = load_csv("block_centroids.csv")
 
+# Safety check: clear any residual Streamlit caches and verify columns
+st.cache_data.clear()
+if "YTD2026" not in pharmacy_detail.columns:
+    st.error(f"ERROR: pharmacy_detail.csv missing YTD2026. Columns found: {list(pharmacy_detail.columns)}")
+    st.stop()
+
 # Initialize scenario state early
 if "activated_observe_eans" not in st.session_state:
     st.session_state.activated_observe_eans = set()
