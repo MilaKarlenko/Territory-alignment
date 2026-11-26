@@ -1,24 +1,26 @@
 Sales_Rep,CVM_clean,count,territory
-Alessia,Build,4,IT-CH
+Alessia,Build,3,IT-CH
 Alessia,Defend,2,IT-CH
-Alessia,Maintain,2,IT-CH
-Eléonore,Build,39,VD-VS-FR
-Eléonore,Defend,16,VD-VS-FR
+Alessia,Gain,2,IT-CH
+Alessia,Maintain,1,IT-CH
+Eléonore,Build,36,VD-VS-FR
+Eléonore,Defend,18,VD-VS-FR
 Eléonore,Gain,2,VD-VS-FR
-Eléonore,Maintain,8,VD-VS-FR
-Florence,Build,41,GE-JU-NE
-Florence,Defend,10,GE-JU-NE
+Eléonore,Maintain,9,VD-VS-FR
+Florence,Build,34,GE-JU-NE
+Florence,Defend,9,GE-JU-NE
 Florence,Gain,3,GE-JU-NE
-Florence,Maintain,11,GE-JU-NE
-Luis,Build,2,ZG CITY-AG
-Luis,Defend,87,ZG CITY-AG
-Luis,Gain,4,ZG CITY-AG
-Luis,Maintain,28,ZG CITY-AG
-Michaela,Build,48,BS-BL-BE
-Michaela,Defend,37,BS-BL-BE
-Michaela,Gain,1,BS-BL-BE
-Michaela,Maintain,27,BS-BL-BE
-Sarina,Build,34,ZH-EAST-CH
-Sarina,Defend,25,ZH-EAST-CH
-Sarina,Gain,17,ZH-EAST-CH
-Sarina,Maintain,1,ZH-EAST-CH
+Florence,Maintain,10,GE-JU-NE
+Luis,Build,41,ZG CITY-AG
+Luis,Defend,85,ZG CITY-AG
+Luis,Gain,6,ZG CITY-AG
+Luis,Maintain,29,ZG CITY-AG
+Michaela,Build,51,BS-BL-BE
+Michaela,Defend,39,BS-BL-BE
+Michaela,Gain,2,BS-BL-BE
+Michaela,Maintain,23,BS-BL-BE
+Michaela,Observe,2,BS-BL-BE
+Sarina,Build,37,ZH-EAST-CH
+Sarina,Defend,27,ZH-EAST-CH
+Sarina,Gain,19,ZH-EAST-CH
+Sarina,Maintain,3,ZH-EAST-CH
