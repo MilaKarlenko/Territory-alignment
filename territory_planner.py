@@ -117,6 +117,8 @@ rep_baseline_cvm = load_csv("rep_baseline_cvm.csv")
 block_rep_tp = load_csv("block_rep_tp.csv")
 rep_baseline_tp = load_csv("rep_baseline_tp.csv")
 pharmacy_detail = load_csv("pharmacy_detail.csv")
+# Normalize column names for backward compatibility
+pharmacy_detail.rename(columns={"NAME":"Name","ORT":"Ort"}, inplace=True, errors="ignore")
 block_centroids = load_csv("block_centroids.csv")
 
 # Initialize scenario state early
@@ -729,7 +731,7 @@ for _,br in db.iterrows():
                 st.markdown(f"**Pharmacies:** {int(pr['pharmacies'])} · **Visited:** {int(pr['visited'])} · **Coverage:** {pr['coverage']}% · **Top:** {int(pr['top'])} · **Visits:** {int(pr['visits'])} · **V/Day:** {pr['vpd']}", unsafe_allow_html=True)
                 for _,ph in bp[bp["PLZ"]==pr["PLZ"]].sort_values("YTD2026",ascending=False).iterrows():
                     ts2="⭐ " if ph["Top_Priority"]==1 else ""
-                    st.markdown(f"&nbsp;&nbsp;&nbsp;&nbsp;{ts2}**{ph['NAME']}** — {ph['CVM_clean']} — {int(ph['Planned_Visits'])} visits — {ph['YTD2026']:,.0f} sales", unsafe_allow_html=True)
+                    st.markdown(f"&nbsp;&nbsp;&nbsp;&nbsp;{ts2}**{ph['Name']}** — {ph['CVM_clean']} — {int(ph['Planned_Visits'])} visits — {ph['YTD2026']:,.0f} sales", unsafe_allow_html=True)
 
 # OBSERVE PHARMACIES
 st.divider()
