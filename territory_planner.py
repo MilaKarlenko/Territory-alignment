@@ -107,9 +107,9 @@ def dc(val):
 def load_geojson():
     with open("blocks.geojson") as f: return json.load(f)
 @st.cache_data
-def load_csv(p, _file_mod=None): return pd.read_csv(p)
+def load_csv(p, file_mod=None): return pd.read_csv(p)
 def get_csv(p):
-    import os; return load_csv(p, _file_mod=os.path.getmtime(p))
+    import os; return load_csv(p, file_mod=os.path.getmtime(p))
 
 geojson_data = load_geojson()
 block_df_original = get_csv("block_data.csv")
