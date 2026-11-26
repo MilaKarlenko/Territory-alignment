@@ -107,18 +107,20 @@ def dc(val):
 def load_geojson():
     with open("blocks.geojson") as f: return json.load(f)
 @st.cache_data
-def load_csv(p): return pd.read_csv(p)
+def load_csv(p, _file_mod=None): return pd.read_csv(p)
+def get_csv(p):
+    import os; return load_csv(p, _file_mod=os.path.getmtime(p))
 
 geojson_data = load_geojson()
-block_df_original = load_csv("block_data.csv")
-block_rep_kpis = load_csv("block_rep_kpis.csv")
-rep_baseline = load_csv("rep_baseline.csv")
-block_rep_cvm = load_csv("block_rep_cvm.csv")
-rep_baseline_cvm = load_csv("rep_baseline_cvm.csv")
-block_rep_tp = load_csv("block_rep_tp.csv")
-rep_baseline_tp = load_csv("rep_baseline_tp.csv")
-pharmacy_detail = load_csv("pharmacy_detail.csv")
-block_centroids = load_csv("block_centroids.csv")
+block_df_original = get_csv("block_data.csv")
+block_rep_kpis = get_csv("block_rep_kpis.csv")
+rep_baseline = get_csv("rep_baseline.csv")
+block_rep_cvm = get_csv("block_rep_cvm.csv")
+rep_baseline_cvm = get_csv("rep_baseline_cvm.csv")
+block_rep_tp = get_csv("block_rep_tp.csv")
+rep_baseline_tp = get_csv("rep_baseline_tp.csv")
+pharmacy_detail = get_csv("pharmacy_detail.csv")
+block_centroids = get_csv("block_centroids.csv")
 
 # Initialize scenario state early
 if "activated_observe_eans" not in st.session_state:
@@ -307,7 +309,10 @@ with col_map:
                 summary.to_excel(w,sheet_name="Territory KPIs",index=False); edf.to_excel(w,sheet_name="Block Assignments",index=False)
                 pc = pharmacy_detail.copy(); pc["current_territory"]=pc["Block_APO"].map(dict(zip(block_df["Block_APO"],block_df["territory"])))
                 pc.to_excel(w,sheet_name="Pharmacy Detail",index=False)
-                pc[pc["CVM_clean"]=="Observe"].sort_values("YTD2026",ascending=False).to_excel(w,sheet_name="Observe",index=False)
+                obs = pc[pc["CVM_clean"]=="Observe"]
+                sort_col = "YTD2026" if "YTD2026" in obs.columns else ("FY2025" if "FY2025" in obs.columns else None)
+                if sort_col: obs = obs.sort_values(sort_col, ascending=False)
+                obs.to_excel(w,sheet_name="Observe",index=False)
             return o.getvalue()
         st.download_button("Full Excel Report",build_excel(),"territory_report.xlsx","application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
 
