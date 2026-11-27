@@ -31,7 +31,9 @@ st.markdown(f"""
     .stButton > button:hover {{ background-color: #0a4a1a; color: #FFFFFF; }}
     .stSelectbox label, .stMultiSelect label, .stNumberInput label {{ color: #042B0B !important; font-weight: 600; }}
     hr {{ border-color: #042B0B !important; opacity: 0.2; }}
-    span[data-baseweb="tag"] {{ background-color: #042B0B !important; color: #F7EFE6 !important; }}
+    span[data-baseweb="tag"] {{ background-color: #3D553E !important; color: #FFFFFF !important; }}
+    span[data-baseweb="tag"] svg {{ fill: #FFFFFF !important; }}
+    span[data-baseweb="tag"] span {{ color: #FFFFFF !important; }}
     [data-testid="stExpander"] {{ background-color: #F0E8DC; border-radius: 12px; }}
     div[data-baseweb="select"] > div {{ border-color: #042B0B !important; border-radius: 50px !important; }}
     div[data-baseweb="input"] {{ border-color: #042B0B !important; border-radius: 50px !important; }}
@@ -698,6 +700,204 @@ with dc3:
         fr_label = f"🏠 {fr}" if fr in REP_HOME else f"Block {fr}"
         to_label = f"🏠 {to}" if to in REP_HOME else f"Block {to}"
         st.markdown(f'<div style="padding:16px;background:#e8f0e8;border-radius:6px;margin-top:24px;"><strong style="font-size:20px;">{dist} km</strong><br>{fr_label} → {to_label}</div>', unsafe_allow_html=True)
+
+# BLOCK REASSIGNMENT SUGGESTIONS
+st.divider()
+st.markdown('<h3 style="color:#042B0B;font-weight:800;">Block Reassignment Suggestions</h3>', unsafe_allow_html=True)
+st.markdown('<span style="font-size:13px;color:#6D7F6E;">Analyzes each block\'s distance to all rep homes and suggests swaps that reduce travel while keeping capacity balanced (~100%). Only suggests swaps within the same language group.</span>', unsafe_allow_html=True)
+
+# Build block-level data for analysis
+_ra_bc = dict(zip(block_centroids["Block_APO"], zip(block_centroids["lat"], block_centroids["lng"])))
+_ra_block_visits = {}
+_ra_block_sales = {}
+_ra_block_pharma = {}
+for _, row in block_rep_kpis.iterrows():
+    bid = row["Block_APO"]
+    _ra_block_visits[bid] = _ra_block_visits.get(bid, 0) + float(row["total_visits"])
+    _ra_block_sales[bid] = _ra_block_sales.get(bid, 0) + float(row["total_sales"])
+    _ra_block_pharma[bid] = _ra_block_pharma.get(bid, 0) + int(row["pharmacies"])
+
+# Current territory visits/capacity per rep
+_ra_rep_visits = {}
+for t in original_territories:
+    rep = TERRITORY_TO_REP.get(t, t)
+    k = kpi_per_territory.get(t, {})
+    _ra_rep_visits[rep] = float(k.get("total_visits", 0))
+
+# Compute distance from every block to every rep home
+_ra_block_dists = {}
+for bid, (blat, blng) in _ra_bc.items():
+    _ra_block_dists[bid] = {}
+    for rn, h in REP_HOME.items():
+        _ra_block_dists[bid][rn] = round(haversine_km(h["lat"], h["lng"], blat, blng), 1)
+
+# Language of each block (from original assignment)
+_ra_block_lang = {}
+for bid in assignments:
+    orig_t = original_assignments.get(bid, assignments.get(bid, ""))
+    _ra_block_lang[bid] = TERRITORY_LANGUAGE.get(orig_t, "Unknown")
+
+# Find swap suggestions
+_ra_suggestions = []
+for bid, cur_terr in assignments.items():
+    cur_rep = TERRITORY_TO_REP.get(cur_terr, None)
+    if not cur_rep or bid not in _ra_block_dists:
+        continue
+    cur_dist = _ra_block_dists[bid].get(cur_rep, 999)
+    block_lang = _ra_block_lang.get(bid, "Unknown")
+    bv = _ra_block_visits.get(bid, 0)
+    bs = _ra_block_sales.get(bid, 0)
+    bp = _ra_block_pharma.get(bid, 0)
+
+    # Check all reps in the same language group
+    for other_rep, other_dist in _ra_block_dists[bid].items():
+        if other_rep == cur_rep:
+            continue
+        other_lang = REP_LANGUAGE.get(other_rep, "Unknown")
+        if other_lang != block_lang:
+            continue
+        # Only suggest if distance saving is meaningful (>15 km closer)
+        dist_saving = cur_dist - other_dist
+        if dist_saving < 15:
+            continue
+        # Check capacity impact
+        other_terr = REP_TO_TERRITORY.get(other_rep, "")
+        cur_rep_cap = REP_CAPACITY.get(cur_rep, {"capacity": 1435})["capacity"]
+        other_rep_cap = REP_CAPACITY.get(other_rep, {"capacity": 1435})["capacity"]
+        cur_rep_new_v = _ra_rep_visits.get(cur_rep, 0) - bv
+        other_rep_new_v = _ra_rep_visits.get(other_rep, 0) + bv
+        cur_rep_new_pct = round(cur_rep_new_v / cur_rep_cap * 100, 1) if cur_rep_cap > 0 else 0
+        other_rep_new_pct = round(other_rep_new_v / other_rep_cap * 100, 1) if other_rep_cap > 0 else 0
+        # Accept if receiving rep stays under 110% and donating rep stays above 70%
+        if other_rep_new_pct > 110 or cur_rep_new_pct < 70:
+            continue
+        # Score: combine distance saving + capacity balance improvement
+        cur_pct_before = round(_ra_rep_visits.get(cur_rep, 0) / cur_rep_cap * 100, 1) if cur_rep_cap > 0 else 0
+        other_pct_before = round(_ra_rep_visits.get(other_rep, 0) / other_rep_cap * 100, 1) if other_rep_cap > 0 else 0
+        # Imbalance = max deviation from 100%
+        imb_before = abs(cur_pct_before - 100) + abs(other_pct_before - 100)
+        imb_after = abs(cur_rep_new_pct - 100) + abs(other_rep_new_pct - 100)
+        balance_gain = imb_before - imb_after
+        score = dist_saving * 2 + balance_gain
+        _ra_suggestions.append({
+            "block": bid, "from_rep": cur_rep, "to_rep": other_rep,
+            "from_terr": cur_terr, "to_terr": other_terr,
+            "cur_dist": cur_dist, "new_dist": other_dist, "dist_saving": round(dist_saving, 1),
+            "from_pct_before": cur_pct_before, "from_pct_after": cur_rep_new_pct,
+            "to_pct_before": other_pct_before, "to_pct_after": other_rep_new_pct,
+            "balance_gain": round(balance_gain, 1), "score": round(score, 1),
+            "visits": int(bv), "sales": round(bs, 0), "pharmacies": int(bp),
+            "language": block_lang,
+        })
+
+# Sort by score descending
+_ra_suggestions.sort(key=lambda x: -x["score"])
+
+# Remove duplicates (if a block appears multiple times, keep best suggestion)
+_ra_seen_blocks = set()
+_ra_unique = []
+for s in _ra_suggestions:
+    if s["block"] not in _ra_seen_blocks:
+        _ra_unique.append(s)
+        _ra_seen_blocks.add(s["block"])
+
+ra_col1, ra_col2 = st.columns([1, 3])
+with ra_col1:
+    ra_min_saving = st.number_input("Min. distance saving (km):", min_value=5, max_value=100, value=15, step=5, key="ra_min_km")
+    ra_lang_filter = st.selectbox("Language group:", options=["All", "German", "French", "Italian"], key="ra_lang")
+    ra_show_count = st.number_input("Show top N:", min_value=5, max_value=50, value=20, step=5, key="ra_top_n")
+
+with ra_col2:
+    _ra_filtered = [s for s in _ra_unique if s["dist_saving"] >= ra_min_saving]
+    if ra_lang_filter != "All":
+        _ra_filtered = [s for s in _ra_filtered if s["language"] == ra_lang_filter]
+    _ra_display = _ra_filtered[:int(ra_show_count)]
+
+    if _ra_display:
+        st.markdown(f"**{len(_ra_filtered)} suggestions found** (showing top {len(_ra_display)} by score)")
+        rh = f'<table style="width:100%;border-collapse:collapse;font-size:13px;"><tr style="background:{HDR_BG};color:white;">'
+        for col in ["#", "Block", "Lang", "From → To", "Dist Now", "Dist New", "Saving", "Ph.", "Visits", "Sales", "From Cap%", "To Cap%", "Score"]:
+            rh += f'<th style="padding:5px;text-align:center;">{col}</th>'
+        rh += '</tr>'
+        for i, s in enumerate(_ra_display):
+            # Color code the capacity changes
+            from_arrow = f'{s["from_pct_before"]}→{s["from_pct_after"]}%'
+            to_arrow = f'{s["to_pct_before"]}→{s["to_pct_after"]}%'
+            from_color = "#27ae60" if abs(s["from_pct_after"]-100) < abs(s["from_pct_before"]-100) else "#e74c3c"
+            to_color = "#27ae60" if abs(s["to_pct_after"]-100) < abs(s["to_pct_before"]-100) else "#e74c3c"
+            bg = "background:#f8f4ee;" if i % 2 == 0 else ""
+            rh += f'<tr style="border-bottom:1px solid #eee;{bg}">'
+            rh += f'<td style="padding:4px;text-align:center;">{i+1}</td>'
+            rh += f'<td style="padding:4px;text-align:center;font-weight:bold;">{s["block"]}</td>'
+            rh += f'<td style="padding:4px;text-align:center;font-size:11px;">{s["language"][:2]}</td>'
+            rh += f'<td style="padding:4px;text-align:center;font-size:12px;">{s["from_rep"]}→{s["to_rep"]}</td>'
+            rh += f'<td style="padding:4px;text-align:center;">{s["cur_dist"]} km</td>'
+            rh += f'<td style="padding:4px;text-align:center;">{s["new_dist"]} km</td>'
+            rh += f'<td style="padding:4px;text-align:center;color:#27ae60;font-weight:bold;">−{s["dist_saving"]} km</td>'
+            rh += f'<td style="padding:4px;text-align:center;">{s["pharmacies"]}</td>'
+            rh += f'<td style="padding:4px;text-align:center;">{s["visits"]}</td>'
+            rh += f'<td style="padding:4px;text-align:center;">{s["sales"]:,.0f}</td>'
+            rh += f'<td style="padding:4px;text-align:center;"><span style="color:{from_color}">{from_arrow}</span></td>'
+            rh += f'<td style="padding:4px;text-align:center;"><span style="color:{to_color}">{to_arrow}</span></td>'
+            rh += f'<td style="padding:4px;text-align:center;font-weight:bold;">{s["score"]}</td>'
+            rh += '</tr>'
+        rh += '</table>'
+        st.markdown(rh, unsafe_allow_html=True)
+
+        # Summary by rep pair
+        st.markdown("---")
+        st.markdown("**Summary by rep pair:**")
+        _pair_summary = {}
+        for s in _ra_filtered:
+            pair = f'{s["from_rep"]} → {s["to_rep"]}'
+            if pair not in _pair_summary:
+                _pair_summary[pair] = {"count": 0, "total_dist_saving": 0, "total_visits": 0, "total_sales": 0}
+            _pair_summary[pair]["count"] += 1
+            _pair_summary[pair]["total_dist_saving"] += s["dist_saving"]
+            _pair_summary[pair]["total_visits"] += s["visits"]
+            _pair_summary[pair]["total_sales"] += s["sales"]
+        ps_html = f'<table style="width:100%;border-collapse:collapse;font-size:13px;"><tr style="background:{HDR_BG};color:white;">'
+        for col in ["From → To", "Blocks", "Total km Saved", "Visits Moved", "Sales Moved"]:
+            ps_html += f'<th style="padding:5px;text-align:center;">{col}</th>'
+        ps_html += '</tr>'
+        for pair, d in sorted(_pair_summary.items(), key=lambda x: -x[1]["total_dist_saving"]):
+            ps_html += f'<tr style="border-bottom:1px solid #eee;"><td style="padding:4px;text-align:center;font-weight:bold;">{pair}</td>'
+            ps_html += f'<td style="padding:4px;text-align:center;">{d["count"]}</td>'
+            ps_html += f'<td style="padding:4px;text-align:center;color:#27ae60;font-weight:bold;">−{d["total_dist_saving"]:.0f} km</td>'
+            ps_html += f'<td style="padding:4px;text-align:center;">{d["total_visits"]}</td>'
+            ps_html += f'<td style="padding:4px;text-align:center;">{d["total_sales"]:,.0f}</td></tr>'
+        ps_html += '</table>'
+        st.markdown(ps_html, unsafe_allow_html=True)
+
+        # Quick-apply top suggestions button
+        st.markdown("---")
+        ra_apply_n = st.number_input("Apply top N suggestions:", min_value=1, max_value=len(_ra_filtered), value=min(5, len(_ra_filtered)), step=1, key="ra_apply_n")
+        if st.button("Apply Selected Reassignments", type="primary", key="ra_apply"):
+            st.session_state.undo_stack.append(dict(st.session_state.assignments))
+            applied = 0
+            # Recompute with running capacity tracking
+            _running_visits = dict(_ra_rep_visits)
+            for s in _ra_filtered[:int(ra_apply_n)]:
+                bid = s["block"]
+                from_rep = s["from_rep"]
+                to_rep = s["to_rep"]
+                to_terr = s["to_terr"]
+                bv = s["visits"]
+                to_cap = REP_CAPACITY.get(to_rep, {"capacity": 1435})["capacity"]
+                from_cap = REP_CAPACITY.get(from_rep, {"capacity": 1435})["capacity"]
+                # Re-check capacity with running totals
+                if (_running_visits.get(to_rep, 0) + bv) / to_cap <= 1.10 and (_running_visits.get(from_rep, 0) - bv) / from_cap >= 0.70:
+                    st.session_state.assignments[bid] = to_terr
+                    _running_visits[from_rep] = _running_visits.get(from_rep, 0) - bv
+                    _running_visits[to_rep] = _running_visits.get(to_rep, 0) + bv
+                    applied += 1
+            if applied > 0:
+                st.success(f"Applied {applied} reassignments.")
+                st.rerun()
+            else:
+                st.warning("No reassignments could be applied (capacity constraints).")
+    else:
+        st.info("No reassignment suggestions found with current filters. Try lowering the minimum distance saving.")
 
 # BLOCK DETAILS
 st.divider()
