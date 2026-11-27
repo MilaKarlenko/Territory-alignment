@@ -31,9 +31,12 @@ st.markdown(f"""
     .stButton > button:hover {{ background-color: #0a4a1a; color: #FFFFFF; }}
     .stSelectbox label, .stMultiSelect label, .stNumberInput label {{ color: #042B0B !important; font-weight: 600; }}
     hr {{ border-color: #042B0B !important; opacity: 0.2; }}
-    span[data-baseweb="tag"] {{ background-color: #3D553E !important; color: #FFFFFF !important; }}
-    span[data-baseweb="tag"] svg {{ fill: #FFFFFF !important; }}
-    span[data-baseweb="tag"] span {{ color: #FFFFFF !important; }}
+    span[data-baseweb="tag"] {{ background-color: #a7c4a0 !important; color: #042B0B !important; }}
+    span[data-baseweb="tag"] > span {{ color: #042B0B !important; }}
+    span[data-baseweb="tag"] svg {{ fill: #042B0B !important; }}
+    div[data-baseweb="tag"] {{ background-color: #a7c4a0 !important; color: #042B0B !important; }}
+    div[data-baseweb="tag"] span {{ color: #042B0B !important; }}
+    div[data-baseweb="tag"] svg {{ fill: #042B0B !important; }}
     [data-testid="stExpander"] {{ background-color: #F0E8DC; border-radius: 12px; }}
     div[data-baseweb="select"] > div {{ border-color: #042B0B !important; border-radius: 50px !important; }}
     div[data-baseweb="input"] {{ border-color: #042B0B !important; border-radius: 50px !important; }}
