@@ -1,4 +1,5 @@
 import streamlit as st
+import streamlit.components.v1 as components
 import pandas as pd
 import numpy as np
 import json
@@ -32,11 +33,8 @@ st.markdown(f"""
     .stSelectbox label, .stMultiSelect label, .stNumberInput label {{ color: #042B0B !important; font-weight: 600; }}
     hr {{ border-color: #042B0B !important; opacity: 0.2; }}
     span[data-baseweb="tag"] {{ background-color: #a7c4a0 !important; color: #042B0B !important; }}
-    span[data-baseweb="tag"] > span {{ color: #042B0B !important; }}
+    span[data-baseweb="tag"] span {{ color: #042B0B !important; }}
     span[data-baseweb="tag"] svg {{ fill: #042B0B !important; }}
-    div[data-baseweb="tag"] {{ background-color: #a7c4a0 !important; color: #042B0B !important; }}
-    div[data-baseweb="tag"] span {{ color: #042B0B !important; }}
-    div[data-baseweb="tag"] svg {{ fill: #042B0B !important; }}
     [data-testid="stExpander"] {{ background-color: #F0E8DC; border-radius: 12px; }}
     div[data-baseweb="select"] > div {{ border-color: #042B0B !important; border-radius: 50px !important; }}
     div[data-baseweb="input"] {{ border-color: #042B0B !important; border-radius: 50px !important; }}
@@ -55,6 +53,26 @@ st.markdown(f"""
 <img src="data:image/jpeg;base64,{opella_b64}" alt="Opella" style="height:50px;">
 </div>
 """, unsafe_allow_html=True)
+
+# Inject JS to fix multiselect tag colors (st.markdown strips <script>)
+components.html("""
+<script>
+function fixTags() {
+    const tags = window.parent.document.querySelectorAll('span[data-baseweb="tag"]');
+    tags.forEach(function(tag) {
+        tag.style.setProperty('background-color', '#a7c4a0', 'important');
+        tag.style.setProperty('color', '#042B0B', 'important');
+        var spans = tag.querySelectorAll('span');
+        spans.forEach(function(s) { s.style.setProperty('color', '#042B0B', 'important'); });
+        var svgs = tag.querySelectorAll('svg');
+        svgs.forEach(function(s) { s.style.setProperty('fill', '#042B0B', 'important'); });
+    });
+}
+const obs = new MutationObserver(fixTags);
+obs.observe(window.parent.document.body, { childList: true, subtree: true, attributes: true });
+fixTags();
+</script>
+""", height=0)
 
 TERRITORY_COLORS = {
     "GE-JU-NE": "#2d6a4f", "VD-VS-FR": "#52796f", "IT-CH": "#588157",
@@ -253,8 +271,43 @@ with col_map:
         st.markdown('<p style="color:#042B0B;font-weight:800;font-size:16px;">Move Blocks</p>', unsafe_allow_html=True)
         src = st.selectbox("From territory:",options=["All"]+all_territories)
         avail = sorted(assignments.keys()) if src=="All" else sorted([b for b,t in assignments.items() if t==src])
-        ns = st.multiselect("Select blocks:",options=avail,default=st.session_state.selected_blocks_list,format_func=lambda x:f"{x} ({assignments[x]})")
+        # Build checkbox dataframe for block selection
+        _sel_set = set(st.session_state.selected_blocks_list)
+        _block_sel_data = []
+        for bid in avail:
+            _bk = block_rep_kpis[block_rep_kpis["Block_APO"]==bid]
+            _bph = int(_bk["pharmacies"].sum()) if len(_bk)>0 else 0
+            _bvi = int(_bk["total_visits"].sum()) if len(_bk)>0 else 0
+            _block_sel_data.append({"Select": bid in _sel_set, "Block": bid, "Territory": assignments.get(bid,""), "Ph.": _bph, "Visits": _bvi})
+        _block_sel_df = pd.DataFrame(_block_sel_data)
+        # Quick select buttons
+        bsel1, bsel2 = st.columns(2)
+        with bsel1:
+            if st.button("Select all", key="sel_all_blocks"):
+                st.session_state.selected_blocks_list = list(avail)
+                st.rerun()
+        with bsel2:
+            if st.button("Clear", key="clear_blocks"):
+                st.session_state.selected_blocks_list = []
+                st.rerun()
+        edited_df = st.data_editor(
+            _block_sel_df,
+            column_config={
+                "Select": st.column_config.CheckboxColumn("✓", default=False, width="small"),
+                "Block": st.column_config.NumberColumn("Block", width="small"),
+                "Territory": st.column_config.TextColumn("Territory", width="small"),
+                "Ph.": st.column_config.NumberColumn("Ph.", width="small"),
+                "Visits": st.column_config.NumberColumn("Visits", width="small"),
+            },
+            disabled=["Block","Territory","Ph.","Visits"],
+            hide_index=True,
+            height=min(35*len(_block_sel_data)+38, 250),
+            use_container_width=True,
+            key="block_selector",
+        )
+        ns = edited_df[edited_df["Select"]==True]["Block"].tolist()
         st.session_state.selected_blocks_list = ns
+        st.markdown(f'<span style="font-size:12px;color:#6D7F6E;">{len(ns)} of {len(avail)} blocks selected</span>', unsafe_allow_html=True)
         tgt = st.selectbox("Move to:",options=all_territories)
         if ns:
             # Preview with pharmacy count
