@@ -1,16 +1,46 @@
 import streamlit as st
-import streamlit.components.v1 as components
 import pandas as pd
 import numpy as np
 import json
+import os
 import folium
 from streamlit_folium import st_folium
 from copy import deepcopy
 import base64
 from math import radians, sin, cos, sqrt, atan2
 from io import BytesIO
+from datetime import datetime
 
 st.set_page_config(page_title="CH Territory Alignment", layout="wide", initial_sidebar_state="collapsed")
+
+# --- Scenario persistence (survives page refresh + redeploy) ---
+SCENARIOS_FILE = "saved_scenarios.json"
+DEFAULT_SCENARIOS_FILE = "default_scenarios.json"
+
+def _load_scenarios_from_disk():
+    # First try runtime file (survives refresh), then fall back to committed default (survives redeploy)
+    for path in [SCENARIOS_FILE, DEFAULT_SCENARIOS_FILE]:
+        if os.path.exists(path):
+            try:
+                with open(path, "r") as f:
+                    data = json.load(f)
+                if data:
+                    return data
+            except Exception:
+                continue
+    return []
+
+def _save_scenarios_to_disk(scenarios):
+    with open(SCENARIOS_FILE, "w") as f:
+        json.dump(scenarios, f, indent=2)
+
+def _get_scenarios():
+    if "disk_scenarios" not in st.session_state:
+        st.session_state.disk_scenarios = _load_scenarios_from_disk()
+    return st.session_state.disk_scenarios
+
+def _persist_scenarios():
+    _save_scenarios_to_disk(st.session_state.disk_scenarios)
 
 with open("flag.png", "rb") as f:
     flag_b64 = base64.b64encode(f.read()).decode()
@@ -32,9 +62,12 @@ st.markdown(f"""
     .stButton > button:hover {{ background-color: #0a4a1a; color: #FFFFFF; }}
     .stSelectbox label, .stMultiSelect label, .stNumberInput label {{ color: #042B0B !important; font-weight: 600; }}
     hr {{ border-color: #042B0B !important; opacity: 0.2; }}
-    span[data-baseweb="tag"] {{ background-color: #a7c4a0 !important; color: #042B0B !important; }}
-    span[data-baseweb="tag"] span {{ color: #042B0B !important; }}
-    span[data-baseweb="tag"] svg {{ fill: #042B0B !important; }}
+    span[data-baseweb="tag"] {{ color: #FFFFFF !important; background-color: #2d6a4f !important; }}
+    span[data-baseweb="tag"] span {{ color: #FFFFFF !important; }}
+    span[data-baseweb="tag"] svg {{ fill: #FFFFFF !important; }}
+    div[data-baseweb="tag"] {{ color: #FFFFFF !important; background-color: #2d6a4f !important; }}
+    div[data-baseweb="tag"] span {{ color: #FFFFFF !important; }}
+    [data-baseweb="tag"] * {{ color: #FFFFFF !important; }}
     [data-testid="stExpander"] {{ background-color: #F0E8DC; border-radius: 12px; }}
     div[data-baseweb="select"] > div {{ border-color: #042B0B !important; border-radius: 50px !important; }}
     div[data-baseweb="input"] {{ border-color: #042B0B !important; border-radius: 50px !important; }}
@@ -54,23 +87,32 @@ st.markdown(f"""
 </div>
 """, unsafe_allow_html=True)
 
-# Inject JS to fix multiselect tag colors (st.markdown strips <script>)
+# Fix tag colors with JS injection (runs in parent frame via streamlit components)
+import streamlit.components.v1 as components
 components.html("""
 <script>
-function fixTags() {
-    const tags = window.parent.document.querySelectorAll('span[data-baseweb="tag"]');
-    tags.forEach(function(tag) {
-        tag.style.setProperty('background-color', '#a7c4a0', 'important');
-        tag.style.setProperty('color', '#042B0B', 'important');
-        var spans = tag.querySelectorAll('span');
-        spans.forEach(function(s) { s.style.setProperty('color', '#042B0B', 'important'); });
-        var svgs = tag.querySelectorAll('svg');
-        svgs.forEach(function(s) { s.style.setProperty('fill', '#042B0B', 'important'); });
-    });
-}
-const obs = new MutationObserver(fixTags);
-obs.observe(window.parent.document.body, { childList: true, subtree: true, attributes: true });
-fixTags();
+(function() {
+    function fixTags() {
+        var doc = window.parent.document;
+        if (!doc) return;
+        var tags = doc.querySelectorAll('[data-baseweb="tag"]');
+        tags.forEach(function(tag) {
+            tag.style.setProperty('background-color', '#2d6a4f', 'important');
+            tag.style.setProperty('color', '#FFFFFF', 'important');
+            var spans = tag.querySelectorAll('span');
+            spans.forEach(function(s) { s.style.setProperty('color', '#FFFFFF', 'important'); });
+            var svgs = tag.querySelectorAll('svg');
+            svgs.forEach(function(s) { s.style.setProperty('fill', '#FFFFFF', 'important'); });
+        });
+    }
+    // Run immediately and observe for new tags
+    fixTags();
+    var observer = new MutationObserver(function() { fixTags(); });
+    try {
+        observer.observe(window.parent.document.body, {childList: true, subtree: true});
+    } catch(e) {}
+    setInterval(fixTags, 500);
+})();
 </script>
 """, height=0)
 
@@ -305,7 +347,7 @@ with col_map:
             use_container_width=True,
             key="block_selector",
         )
-        ns = edited_df[edited_df["Select"]==True]["Block"].tolist()
+        ns = [int(b) for b in edited_df[edited_df["Select"]==True]["Block"].tolist()]
         st.session_state.selected_blocks_list = ns
         st.markdown(f'<span style="font-size:12px;color:#6D7F6E;">{len(ns)} of {len(avail)} blocks selected</span>', unsafe_allow_html=True)
         tgt = st.selectbox("Move to:",options=all_territories)
@@ -316,10 +358,17 @@ with col_map:
                 s = summary[summary["territory"]==t]
                 pv[t] = {"Visits":int(s["Visits"].values[0]) if len(s)>0 else 0, "Pharmacies":int(s["Pharmacies"].values[0]) if len(s)>0 else 0}
             for b in ns:
-                for _, row in block_rep_kpis[block_rep_kpis["Block_APO"]==b].iterrows():
-                    rt = REP_TO_TERRITORY.get(row["Sales_Rep"],"")
-                    if rt in pv: pv[rt]["Visits"]-=int(row["total_visits"]); pv[rt]["Pharmacies"]-=int(row["pharmacies"])
-                    if tgt in pv: pv[tgt]["Visits"]+=int(row["total_visits"]); pv[tgt]["Pharmacies"]+=int(row["pharmacies"])
+                # Use current assignment (not original Sales_Rep) as source territory
+                current_terr = assignments.get(b, "")
+                bk_rows = block_rep_kpis[block_rep_kpis["Block_APO"]==b]
+                if len(bk_rows) > 0:
+                    bv = int(bk_rows["total_visits"].sum()); bp = int(bk_rows["pharmacies"].sum())
+                else:
+                    bv = 0; bp = 0
+                if current_terr in pv and current_terr != tgt:
+                    pv[current_terr]["Visits"] -= bv; pv[current_terr]["Pharmacies"] -= bp
+                if tgt in pv and current_terr != tgt:
+                    pv[tgt]["Visits"] += bv; pv[tgt]["Pharmacies"] += bp
             pvh = '<div style="font-size:12px;background:#e8f0e8;padding:8px;border-radius:4px;margin-top:8px;"><strong>Preview after move:</strong><br>'
             for t in sorted_territories:
                 if t in pv:
@@ -357,6 +406,58 @@ with col_map:
         with a2:
             if st.button("Reset All"):
                 st.session_state.assignments=dict(zip(block_df_original["Block_APO"],block_df_original["territory"])); st.session_state.selected_blocks_list=[]; st.session_state.undo_stack=[]; st.session_state.custom_territories={}; st.session_state["wi_run"]=False; st.session_state["wi_scenarios"]=[]; st.session_state["wi_loaded_scenario"]=None; st.session_state.activated_observe_eans=set(); st.session_state.activated_obs_freq=4; st.session_state.loaded_scenario_results=None; st.rerun()
+        st.divider()
+        # --- Saved Scenarios (persist across refresh) ---
+        st.markdown('<p style="color:#042B0B;font-weight:700;font-size:14px;">💾 Saved Scenarios</p>', unsafe_allow_html=True)
+        scenarios = _get_scenarios()
+        # Save current
+        sc_name = st.text_input("Scenario name:", value="", placeholder="e.g. Option A", key="sc_name_input", label_visibility="collapsed")
+        if st.button("Save Current Scenario", key="save_scenario"):
+            name = sc_name.strip()
+            if not name:
+                name = f"Scenario {len(scenarios)+1}"
+            # Store assignments with string keys for JSON
+            sc = {
+                "name": name,
+                "timestamp": datetime.now().strftime("%d.%m.%Y %H:%M"),
+                "assignments": {str(k): v for k, v in assignments.items()},
+                "custom_territories": {k: v for k, v in st.session_state.custom_territories.items()},
+            }
+            scenarios.append(sc)
+            st.session_state.disk_scenarios = scenarios
+            _persist_scenarios()
+            st.rerun()
+        # List saved scenarios
+        if scenarios:
+            for idx, sc in enumerate(scenarios):
+                sc_cols = st.columns([3, 1, 1])
+                with sc_cols[0]:
+                    st.markdown(f'<span style="font-size:12px;color:#042B0B;font-weight:600;">{sc["name"]}</span><br><span style="font-size:10px;color:#6D7F6E;">{sc.get("timestamp","")}</span>', unsafe_allow_html=True)
+                with sc_cols[1]:
+                    if st.button("Load", key=f"load_sc_{idx}"):
+                        st.session_state.undo_stack.append(dict(st.session_state.assignments))
+                        loaded = {int(k): v for k, v in sc["assignments"].items()}
+                        st.session_state.assignments = loaded
+                        st.session_state.custom_territories = sc.get("custom_territories", {})
+                        st.session_state.selected_blocks_list = []
+                        st.rerun()
+                with sc_cols[2]:
+                    if st.button("🗑", key=f"del_sc_{idx}"):
+                        scenarios.pop(idx)
+                        st.session_state.disk_scenarios = scenarios
+                        _persist_scenarios()
+                        st.rerun()
+        else:
+            st.markdown('<span style="font-size:12px;color:#6D7F6E;">No saved scenarios yet</span>', unsafe_allow_html=True)
+        if scenarios:
+            st.download_button(
+                "⬇ Export Scenarios",
+                json.dumps(scenarios, indent=2),
+                "default_scenarios.json",
+                "application/json",
+                help="Download and commit as default_scenarios.json to your GitHub repo to make scenarios survive redeployments",
+                key="export_scenarios",
+            )
         st.divider()
         edf = pd.DataFrame([{"Block_APO":b,"Territory":t} for b,t in assignments.items()]).sort_values("Block_APO")
         st.download_button("Assignments CSV",edf.to_csv(index=False),"territory_assignments.csv","text/csv")
